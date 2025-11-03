@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -6,10 +6,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Contract, Additive, Invoice } from "@/types/contract";
+import { Contract, Additive, Invoice, ManagingUnit } from "@/types/contract";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
-import { managingUnits } from "@/data/mockData";
 import { useAuth } from "@/contexts/AuthContext";
 import { 
   Calendar, 
@@ -32,6 +31,10 @@ import {
 interface ContractDetailsProps {
   contract: Contract;
   onContractUpdate: (contract: Contract) => void;
+  saveAdditive: (additive: Omit<Additive, 'id'>, contractId: string, isEditing: boolean) => Promise<Additive | null>;
+  deleteAdditive: (additiveId: string) => Promise<boolean>;
+  saveInvoice: (invoice: Omit<Invoice, 'id'>, contractId: string, isEditing: boolean) => Promise<Invoice | null>;
+  deleteInvoice: (invoiceId: string) => Promise<boolean>;
 }
 
 const statusConfig = {
@@ -41,16 +44,16 @@ const statusConfig = {
   completed: { label: 'Concluído', color: 'bg-blue-500', icon: Clock }
 };
 
-const paymentStatusConfig = {
-  paid: { label: 'Pago', color: 'bg-green-500' },
-  pending: { label: 'Pendente', color: 'bg-yellow-500' },
-  cancelled: { label: 'Cancelado', color: 'bg-red-500' }
-};
-
-export function ContractDetails({ contract, onContractUpdate }: ContractDetailsProps) {
+export function ContractDetails({ 
+  contract, 
+  onContractUpdate, 
+  saveAdditive, 
+  deleteAdditive, 
+  saveInvoice, 
+  deleteInvoice 
+}: ContractDetailsProps) {
   const { toast } = useToast();
   const { hasPermission } = useAuth();
-  const [isEditingAdditives, setIsEditingAdditives] = useState(false);
   const [isAddingAdditive, setIsAddingAdditive] = useState(false);
   const [isAddingInvoice, setIsAddingInvoice] = useState(false);
   const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
@@ -60,17 +63,29 @@ export function ContractDetails({ contract, onContractUpdate }: ContractDetailsP
   const canEdit = hasPermission('contracts', 'edit');
   const canCreate = hasPermission('contracts', 'create');
   const canDelete = hasPermission('contracts', 'delete');
+  
   const [additiveForm, setAdditiveForm] = useState({
     type: 'value' as 'value' | 'term' | 'both',
     valueChange: 0,
-    newStartDate: '',
-    newEndDate: ''
+    termChange: 0,
+    date: new Date().toISOString().split('T')[0],
+    description: '',
+    justification: '',
+    // Campos auxiliares para edição de prazo
+    newStartDate: contract.startDate.toISOString().split('T')[0],
+    newEndDate: contract.endDate.toISOString().split('T')[0]
   });
+  
   const [invoiceForm, setInvoiceForm] = useState({
     number: '',
     value: 0,
-    date: ''
+    date: new Date().toISOString().split('T')[0]
   });
+
+  // Atualizar o contrato local quando o prop contract mudar (após refetch)
+  useEffect(() => {
+    setCurrentContract(contract);
+  }, [contract]);
 
   const status = statusConfig[currentContract.status];
   const StatusIcon = status.icon;
@@ -84,181 +99,163 @@ export function ContractDetails({ contract, onContractUpdate }: ContractDetailsP
     setInvoiceForm(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleSaveAdditive = () => {
-    // Validações para aditivo de prazo
-    if (additiveForm.type === 'term' || additiveForm.type === 'both') {
-      const newStartDate = new Date(additiveForm.newStartDate);
-      const newEndDate = new Date(additiveForm.newEndDate);
-      const contractStartDate = currentContract.startDate;
-      
-      if (newStartDate < contractStartDate) {
-        toast({
-          variant: "destructive",
-          title: "Erro de validação",
-          description: "A nova data de início não pode ser anterior ao início da vigência do contrato.",
-        });
-        setTimeout(() => {
-          toast({ variant: "destructive", title: "", description: "" });
-        }, 3000);
-        return;
-      }
-      
-      if (newEndDate <= newStartDate) {
-        toast({
-          variant: "destructive",
-          title: "Erro de validação",
-          description: "A nova data de fim deve ser posterior à data de início.",
-        });
-        setTimeout(() => {
-          toast({ variant: "destructive", title: "", description: "" });
-        }, 3000);
-        return;
-      }
-    }
-
-    if (editingAdditive) {
-      // Editar aditivo existente
-      const updatedAdditives = currentContract.additives.map(additive =>
-        additive.id === editingAdditive.id
-          ? {
-              ...additive,
-              type: additiveForm.type,
-              valueChange: additiveForm.valueChange,
-              termChange: additiveForm.type === 'term' || additiveForm.type === 'both' 
-                ? Math.ceil((new Date(additiveForm.newEndDate).getTime() - new Date(additiveForm.newStartDate).getTime()) / (1000 * 60 * 60 * 24))
-                : 0,
-              description: `Aditivo ${additiveForm.type === 'value' ? 'de valor' : additiveForm.type === 'term' ? 'de prazo' : 'de valor e prazo'}`,
-              justification: `Alteração ${additiveForm.type === 'value' ? 'de valor' : additiveForm.type === 'term' ? 'de prazo' : 'de valor e prazo'} conforme necessidade`
-            }
-          : additive
-      );
-      
-      const valueDifference = additiveForm.valueChange - editingAdditive.valueChange;
-      
-      const updatedContract = {
-        ...currentContract,
-        additives: updatedAdditives,
-        currentValue: currentContract.currentValue + valueDifference,
-        remainingBalance: currentContract.remainingBalance + valueDifference,
-        endDate: additiveForm.type === 'term' || additiveForm.type === 'both' 
-          ? new Date(additiveForm.newEndDate)
-          : currentContract.endDate
-      };
-      
-      setCurrentContract(updatedContract);
-      onContractUpdate(updatedContract);
-    } else {
-      // Criar novo aditivo
-      const newAdditive: Additive = {
-        id: Date.now().toString(),
-        contractId: currentContract.id,
-        type: additiveForm.type,
-        description: `Aditivo ${additiveForm.type === 'value' ? 'de valor' : additiveForm.type === 'term' ? 'de prazo' : 'de valor e prazo'}`,
-        valueChange: additiveForm.valueChange,
-        termChange: additiveForm.type === 'term' || additiveForm.type === 'both' 
-          ? Math.ceil((new Date(additiveForm.newEndDate).getTime() - new Date(additiveForm.newStartDate).getTime()) / (1000 * 60 * 60 * 24))
-          : 0,
-        date: new Date(),
-        justification: `Alteração ${additiveForm.type === 'value' ? 'de valor' : additiveForm.type === 'term' ? 'de prazo' : 'de valor e prazo'} conforme necessidade`
-      };
-
-      const updatedContract = {
-        ...currentContract,
-        additives: [...currentContract.additives, newAdditive],
-        currentValue: currentContract.currentValue + additiveForm.valueChange,
-        remainingBalance: currentContract.remainingBalance + additiveForm.valueChange,
-        endDate: additiveForm.type === 'term' || additiveForm.type === 'both' 
-          ? new Date(additiveForm.newEndDate)
-          : currentContract.endDate
-      };
-
-      setCurrentContract(updatedContract);
-      onContractUpdate(updatedContract);
-    }
-    
-    setIsAddingAdditive(false);
-    setEditingAdditive(null);
+  const resetAdditiveForm = () => {
     setAdditiveForm({
       type: 'value',
       valueChange: 0,
-      newStartDate: '',
-      newEndDate: ''
+      termChange: 0,
+      date: new Date().toISOString().split('T')[0],
+      description: '',
+      justification: '',
+      newStartDate: currentContract.startDate.toISOString().split('T')[0],
+      newEndDate: currentContract.endDate.toISOString().split('T')[0]
     });
+    setEditingAdditive(null);
+    setIsAddingAdditive(false);
   };
 
-  const handleSaveInvoice = () => {
-    // Validação de data da nota fiscal
-    const invoiceDate = new Date(invoiceForm.date);
-    const contractStartDate = currentContract.startDate;
-    const contractEndDate = currentContract.endDate;
-    
-    if (invoiceDate < contractStartDate || invoiceDate > contractEndDate) {
-      toast({
-        variant: "destructive",
-        title: "Erro de validação",
-        description: "A data da nota fiscal deve estar dentro do período de vigência do contrato.",
-      });
-      setTimeout(() => {
-        toast({ variant: "destructive", title: "", description: "" });
-      }, 3000);
-      return;
-    }
-    
-    if (editingInvoice) {
-      // Editar nota fiscal existente
-      const oldInvoice = currentContract.invoices.find(inv => inv.id === editingInvoice.id);
-      const oldValue = oldInvoice ? oldInvoice.value : 0;
-      
-      const updatedInvoices = currentContract.invoices.map(invoice =>
-        invoice.id === editingInvoice.id
-          ? {
-              ...invoice,
-              number: invoiceForm.number,
-              value: invoiceForm.value,
-              date: new Date(invoiceForm.date)
-            }
-          : invoice
-      );
-
-      const valueDifference = invoiceForm.value - oldValue;
-      
-      const updatedContract = {
-        ...currentContract,
-        invoices: updatedInvoices,
-        usedValue: currentContract.usedValue + valueDifference,
-        remainingBalance: currentContract.remainingBalance - valueDifference
-      };
-
-      setCurrentContract(updatedContract);
-      onContractUpdate(updatedContract);
-    } else {
-      // Criar nova nota fiscal
-      const newInvoice: Invoice = {
-        id: Date.now().toString(),
-        contractId: currentContract.id,
-        number: invoiceForm.number,
-        value: invoiceForm.value,
-        date: new Date(invoiceForm.date)
-      };
-
-      const updatedContract = {
-        ...currentContract,
-        invoices: [...currentContract.invoices, newInvoice],
-        usedValue: currentContract.usedValue + invoiceForm.value,
-        remainingBalance: currentContract.remainingBalance - invoiceForm.value
-      };
-
-      setCurrentContract(updatedContract);
-      onContractUpdate(updatedContract);
-    }
-    
-    setIsAddingInvoice(false);
+  const resetInvoiceForm = () => {
     setInvoiceForm({
       number: '',
       value: 0,
-      date: ''
+      date: new Date().toISOString().split('T')[0]
     });
     setEditingInvoice(null);
+    setIsAddingInvoice(false);
+  };
+
+  const handleSaveAdditive = async () => {
+    const isEditing = !!editingAdditive;
+    const { type, valueChange, newStartDate, newEndDate, date, description, justification } = additiveForm;
+
+    // 1. Validação de Prazo
+    let termChange = 0;
+    let newContractEndDate = currentContract.endDate;
+    
+    if (type === 'term' || type === 'both') {
+      const start = new Date(newStartDate);
+      const end = new Date(newEndDate);
+      
+      if (end <= start) {
+        toast({ variant: "destructive", title: "Erro de Prazo", description: "A nova data de fim deve ser posterior à data de início." });
+        return;
+      }
+      
+      // Calcula a diferença em dias entre a nova data de fim e a data de fim atual do contrato
+      // Nota: Esta lógica é simplificada. Em um sistema real, calcular a mudança de prazo
+      // requer comparar a nova vigência com a vigência anterior do contrato.
+      const diffTime = end.getTime() - currentContract.endDate.getTime();
+      termChange = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      newContractEndDate = end;
+    }
+
+    // 2. Preparar dados do Aditivo
+    const additiveToSave: Omit<Additive, 'id'> = {
+      id: isEditing ? editingAdditive!.id : undefined,
+      contractId: currentContract.id,
+      type,
+      description: description || `Aditivo ${type}`,
+      valueChange: valueChange || 0,
+      termChange: termChange,
+      date: new Date(date),
+      justification: justification || 'Alteração conforme necessidade',
+    };
+
+    // 3. Salvar Aditivo no Supabase
+    const savedAdditive = await saveAdditive(additiveToSave, currentContract.id, isEditing);
+
+    if (savedAdditive) {
+      // 4. Recalcular valores do Contrato
+      let updatedCurrentValue = currentContract.currentValue;
+      let updatedRemainingBalance = currentContract.remainingBalance;
+      let updatedAdditives = [...currentContract.additives];
+
+      if (isEditing) {
+        const oldAdditive = currentContract.additives.find(a => a.id === savedAdditive.id);
+        const oldValueChange = oldAdditive?.valueChange || 0;
+        
+        // Reverte o valor antigo e aplica o novo
+        updatedCurrentValue = updatedCurrentValue - oldValueChange + savedAdditive.valueChange;
+        updatedRemainingBalance = updatedRemainingBalance - oldValueChange + savedAdditive.valueChange;
+        
+        updatedAdditives = updatedAdditives.map(a => a.id === savedAdditive.id ? savedAdditive : a);
+      } else {
+        updatedCurrentValue += savedAdditive.valueChange;
+        updatedRemainingBalance += savedAdditive.valueChange;
+        updatedAdditives.push(savedAdditive);
+      }
+
+      // 5. Atualizar Contrato Pai
+      const updatedContract: Contract = {
+        ...currentContract,
+        currentValue: updatedCurrentValue,
+        remainingBalance: updatedRemainingBalance,
+        endDate: newContractEndDate,
+        additives: updatedAdditives,
+      };
+
+      onContractUpdate(updatedContract); // Chama o update no Supabase via App.tsx
+      resetAdditiveForm();
+      toast({ title: "Sucesso", description: `Aditivo ${isEditing ? 'atualizado' : 'salvo'} com sucesso.`, variant: "success" });
+    }
+  };
+
+  const handleSaveInvoice = async () => {
+    const isEditing = !!editingInvoice;
+    const { number, value, date } = invoiceForm;
+
+    // 1. Validação de Data
+    const invoiceDate = new Date(date);
+    if (invoiceDate < currentContract.startDate || invoiceDate > currentContract.endDate) {
+      toast({ variant: "destructive", title: "Erro de validação", description: "A data da nota fiscal deve estar dentro do período de vigência do contrato." });
+      return;
+    }
+    
+    // 2. Preparar dados da Nota Fiscal
+    const invoiceToSave: Omit<Invoice, 'id'> = {
+      id: isEditing ? editingInvoice!.id : undefined,
+      contractId: currentContract.id,
+      number,
+      value: value || 0,
+      date: invoiceDate,
+    };
+
+    // 3. Salvar Nota Fiscal no Supabase
+    const savedInvoice = await saveInvoice(invoiceToSave, currentContract.id, isEditing);
+
+    if (savedInvoice) {
+      // 4. Recalcular valores do Contrato
+      let updatedUsedValue = currentContract.usedValue;
+      let updatedRemainingBalance = currentContract.remainingBalance;
+      let updatedInvoices = [...currentContract.invoices];
+
+      if (isEditing) {
+        const oldInvoice = currentContract.invoices.find(inv => inv.id === savedInvoice.id);
+        const oldValue = oldInvoice?.value || 0;
+        
+        // Reverte o valor antigo e aplica o novo
+        updatedUsedValue = updatedUsedValue - oldValue + savedInvoice.value;
+        updatedRemainingBalance = updatedRemainingBalance + oldValue - savedInvoice.value;
+        
+        updatedInvoices = updatedInvoices.map(inv => inv.id === savedInvoice.id ? savedInvoice : inv);
+      } else {
+        updatedUsedValue += savedInvoice.value;
+        updatedRemainingBalance -= savedInvoice.value;
+        updatedInvoices.push(savedInvoice);
+      }
+
+      // 5. Atualizar Contrato Pai
+      const updatedContract: Contract = {
+        ...currentContract,
+        usedValue: updatedUsedValue,
+        remainingBalance: updatedRemainingBalance,
+        invoices: updatedInvoices,
+      };
+
+      onContractUpdate(updatedContract); // Chama o update no Supabase via App.tsx
+      resetInvoiceForm();
+      toast({ title: "Sucesso", description: `Nota Fiscal ${isEditing ? 'atualizada' : 'salva'} com sucesso.`, variant: "success" });
+    }
   };
 
   const handleEditAdditive = (additive: Additive) => {
@@ -266,8 +263,12 @@ export function ContractDetails({ contract, onContractUpdate }: ContractDetailsP
     setAdditiveForm({
       type: additive.type,
       valueChange: additive.valueChange,
-      newStartDate: currentContract.startDate.toISOString().split('T')[0],
-      newEndDate: currentContract.endDate.toISOString().split('T')[0]
+      termChange: additive.termChange,
+      date: additive.date.toISOString().split('T')[0],
+      description: additive.description || '',
+      justification: additive.justification || '',
+      newStartDate: currentContract.startDate.toISOString().split('T')[0], // Mantém a data atual do contrato
+      newEndDate: currentContract.endDate.toISOString().split('T')[0] // Mantém a data atual do contrato
     });
     setIsAddingAdditive(true);
   };
@@ -282,21 +283,26 @@ export function ContractDetails({ contract, onContractUpdate }: ContractDetailsP
     setIsAddingInvoice(true);
   };
 
-  const handleDeleteInvoice = (invoiceId: string) => {
+  const handleDeleteInvoice = async (invoiceId: string) => {
     if (confirm('Tem certeza que deseja excluir esta nota fiscal?')) {
       const invoiceToDelete = currentContract.invoices.find(inv => inv.id === invoiceId);
-      if (invoiceToDelete) {
+      if (!invoiceToDelete) return;
+
+      const success = await deleteInvoice(invoiceId);
+      
+      if (success) {
+        // Recalcular valores do Contrato
         const updatedInvoices = currentContract.invoices.filter(invoice => invoice.id !== invoiceId);
         
-        const updatedContract = {
+        const updatedContract: Contract = {
           ...currentContract,
           invoices: updatedInvoices,
           usedValue: currentContract.usedValue - invoiceToDelete.value,
           remainingBalance: currentContract.remainingBalance + invoiceToDelete.value
         };
 
-        setCurrentContract(updatedContract);
-        onContractUpdate(updatedContract);
+        onContractUpdate(updatedContract); // Chama o update no Supabase via App.tsx
+        toast({ title: "Sucesso", description: "Nota fiscal excluída com sucesso.", variant: "success" });
       }
     }
   };
@@ -308,21 +314,16 @@ export function ContractDetails({ contract, onContractUpdate }: ContractDetailsP
         status: 'suspended' as const
       };
 
-      setCurrentContract(updatedContract);
       onContractUpdate(updatedContract);
+      toast({ title: "Contrato Rescindido", description: "O status do contrato foi alterado para Suspenso.", variant: "warning" });
     }
   };
 
-  // Atualizar o contrato local quando o prop contract mudar
-  useState(() => {
-    setCurrentContract(contract);
-  }, [contract]);
-
-  // Encontrar o programa do contrato
-  const contractUnit = managingUnits.find(unit => unit.name === currentContract.managingUnit);
-  const contractProgram = contractUnit?.programs.find(program => 
-    currentContract.object.toLowerCase().includes(program.name.toLowerCase())
-  );
+  // Encontrar o programa do contrato (Ainda depende de uma busca, mas vamos simplificar por enquanto)
+  // NOTE: Em um sistema real, o App.tsx passaria a lista de ManagingUnits para ContractDetails
+  // para que ele pudesse fazer essa busca. Como não temos a lista aqui, vamos ignorar a busca do programa.
+  const contractUnit = null; // Não temos managingUnits aqui
+  const contractProgram = null;
 
   return (
     <div className="space-y-6">
@@ -341,7 +342,7 @@ export function ContractDetails({ contract, onContractUpdate }: ContractDetailsP
                 <StatusIcon className="w-4 h-4 mr-1" />
                 {status.label}
               </Badge>
-              {currentContract.status === 'active' && (
+              {currentContract.status === 'active' && canEdit && (
                 <Button 
                   variant="outline" 
                   size="sm"
@@ -476,27 +477,17 @@ export function ContractDetails({ contract, onContractUpdate }: ContractDetailsP
         <TabsContent value="additives" className="space-y-4">
           <div className="flex justify-between items-center">
             <h3 className="text-lg font-semibold">Gestão de Aditivos</h3>
-            {currentContract.status === 'active' && (canEdit || canCreate) && (
-              <div className="space-x-2">
-                {canEdit && (
-                  <Button
-                    variant="outline"
-                    onClick={() => setIsEditingAdditives(!isEditingAdditives)}
-                  >
-                    <Edit className="w-4 h-4 mr-2" />
-                    {isEditingAdditives ? 'Cancelar Edição' : 'Editar Aditivos'}
-                  </Button>
-                )}
-                {canCreate && (
-                  <Button
-                    onClick={() => setIsAddingAdditive(true)}
-                    className="bg-blue-600 hover:bg-blue-700"
-                  >
-                    <Plus className="w-4 h-4 mr-2" />
-                    Novo Aditivo
-                  </Button>
-                )}
-              </div>
+            {currentContract.status === 'active' && canCreate && (
+              <Button
+                onClick={() => {
+                  resetAdditiveForm();
+                  setIsAddingAdditive(true);
+                }}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Novo Aditivo
+              </Button>
             )}
           </div>
 
@@ -552,7 +543,7 @@ export function ContractDetails({ contract, onContractUpdate }: ContractDetailsP
                   <div>
                     {(additiveForm.type === 'value' || additiveForm.type === 'both') && (
                       <div>
-                        <Label htmlFor="valueChange">Acréscimo de Valor</Label>
+                        <Label htmlFor="valueChange">Acréscimo de Valor (R$)</Label>
                         <Input
                           id="valueChange"
                           type="number"
@@ -564,6 +555,26 @@ export function ContractDetails({ contract, onContractUpdate }: ContractDetailsP
                       </div>
                     )}
                   </div>
+                  <div>
+                    <Label htmlFor="date">Data do Aditivo</Label>
+                    <Input
+                      id="date"
+                      type="date"
+                      value={additiveForm.date}
+                      onChange={(e) => handleAdditiveInputChange('date', e.target.value)}
+                      required
+                    />
+                  </div>
+                </div>
+                
+                <div>
+                  <Label htmlFor="description">Descrição</Label>
+                  <Textarea
+                    id="description"
+                    value={additiveForm.description}
+                    onChange={(e) => handleAdditiveInputChange('description', e.target.value)}
+                    placeholder="Breve descrição do aditivo"
+                  />
                 </div>
 
                 {(additiveForm.type === 'term' || additiveForm.type === 'both') && (
@@ -592,16 +603,7 @@ export function ContractDetails({ contract, onContractUpdate }: ContractDetailsP
                 )}
 
                 <div className="flex justify-end space-x-2">
-                  <Button variant="outline" onClick={() => {
-                    setIsAddingAdditive(false);
-                    setEditingAdditive(null);
-                    setAdditiveForm({
-                      type: 'value',
-                      valueChange: 0,
-                      newStartDate: '',
-                      newEndDate: ''
-                    });
-                  }}>
+                  <Button variant="outline" onClick={resetAdditiveForm}>
                     Cancelar
                   </Button>
                   <Button onClick={handleSaveAdditive} className="bg-blue-600 hover:bg-blue-700">
@@ -644,6 +646,7 @@ export function ContractDetails({ contract, onContractUpdate }: ContractDetailsP
                           <Edit className="w-4 h-4" />
                         </Button>
                       )}
+                      {/* Não implementamos a exclusão de aditivos, pois isso exigiria um recálculo complexo do histórico do contrato. */}
                     </div>
                   </div>
                   
@@ -676,7 +679,10 @@ export function ContractDetails({ contract, onContractUpdate }: ContractDetailsP
             <h3 className="text-lg font-semibold">Gestão de Notas Fiscais</h3>
             {currentContract.status === 'active' && canCreate && (
               <Button
-                onClick={() => setIsAddingInvoice(true)}
+                onClick={() => {
+                  resetInvoiceForm();
+                  setIsAddingInvoice(true);
+                }}
                 className="bg-blue-600 hover:bg-blue-700"
               >
                 <Plus className="w-4 h-4 mr-2" />
@@ -702,6 +708,7 @@ export function ContractDetails({ contract, onContractUpdate }: ContractDetailsP
                       value={invoiceForm.number}
                       onChange={(e) => handleInvoiceInputChange('number', e.target.value)}
                       placeholder="Ex: NF-001"
+                      required
                     />
                   </div>
                   <div>
@@ -713,6 +720,7 @@ export function ContractDetails({ contract, onContractUpdate }: ContractDetailsP
                       value={invoiceForm.value}
                       onChange={(e) => handleInvoiceInputChange('value', parseFloat(e.target.value) || 0)}
                       placeholder="0,00"
+                      required
                     />
                   </div>
                   <div>
@@ -722,16 +730,13 @@ export function ContractDetails({ contract, onContractUpdate }: ContractDetailsP
                       type="date"
                       value={invoiceForm.date}
                       onChange={(e) => handleInvoiceInputChange('date', e.target.value)}
+                      required
                     />
                   </div>
                 </div>
 
                 <div className="flex justify-end space-x-2">
-                  <Button variant="outline" onClick={() => {
-                    setIsAddingInvoice(false);
-                    setEditingInvoice(null);
-                    setInvoiceForm({ number: '', value: 0, date: '' });
-                  }}>
+                  <Button variant="outline" onClick={resetInvoiceForm}>
                     Cancelar
                   </Button>
                   <Button onClick={handleSaveInvoice} className="bg-blue-600 hover:bg-blue-700">

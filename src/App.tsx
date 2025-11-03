@@ -10,14 +10,29 @@ import { ContractForm } from "@/components/ContractForm";
 import { ManagingUnits } from "@/components/ManagingUnits";
 import { Reports } from "@/components/Reports";
 import { Settings } from "@/components/Settings";
-import { Contract, ManagingUnit, Company } from "@/types/contract";
+import { Contract } from "@/types/contract";
 import { useSupabaseData } from '@/hooks/useSupabaseData';
+import { useContractManagement } from '@/hooks/useContractManagement';
 
 export type PageType = 'overview' | 'contracts' | 'contract-form' | 'managing-units' | 'reports' | 'settings' | 'contract-details';
 
 function App() {
   const { user, loading: authLoading } = useAuth();
   const { contracts, managingUnits, companies, loading: dataLoading, refetch } = useSupabaseData();
+  const { 
+    saveContract, 
+    updateContract, 
+    saveUnit, 
+    deleteUnit, 
+    saveProgram, 
+    deleteProgram, 
+    saveCompany, 
+    deleteCompany,
+    saveAdditive,
+    deleteAdditive,
+    saveInvoice,
+    deleteInvoice
+  } = useContractManagement(refetch);
   
   const [selectedContract, setSelectedContract] = useState<Contract | null>(null);
   const [activePage, setActivePage] = useState<PageType>("overview");
@@ -27,21 +42,21 @@ function App() {
     unit?: string;
   }>({});
 
-  const handleContractSave = (newContract: Contract) => {
-    // Em uma implementação real, esta função faria um INSERT no Supabase e chamaria refetch.
-    // Por enquanto, apenas adicionamos localmente para simulação.
-    // TODO: Implementar INSERT real no Supabase
-    setContracts(prev => [...prev, newContract]);
+  const handleContractSave = async (contractData: Omit<Contract, 'id' | 'additives' | 'invoices'>) => {
+    const newContract = await saveContract(contractData);
+    if (newContract) {
+      // Após salvar no banco, o refetch atualiza a lista global.
+      // Podemos redirecionar para os detalhes do novo contrato.
+      setSelectedContract(newContract);
+      setActivePage('contract-details');
+    }
   };
 
-  const handleContractUpdate = (updatedContract: Contract) => {
-    // Em uma implementação real, esta função faria um UPDATE no Supabase e chamaria refetch.
-    // TODO: Implementar UPDATE real no Supabase
-    setContracts(prev => prev.map(contract => 
-      contract.id === updatedContract.id ? updatedContract : contract
-    ));
-    if (selectedContract && selectedContract.id === updatedContract.id) {
-      setSelectedContract(updatedContract);
+  const handleContractUpdate = async (updatedContract: Contract) => {
+    const result = await updateContract(updatedContract);
+    if (result) {
+      // Atualiza o estado local para refletir a mudança imediatamente
+      setSelectedContract(result);
     }
   };
   
@@ -72,15 +87,37 @@ function App() {
       case 'contracts':
         return <ContractList contracts={contracts} onContractSelect={handleContractSelect} initialFilters={contractFilters} />;
       case 'contract-form':
-        return <ContractForm onContractSave={handleContractSave} managingUnits={managingUnits} companies={companies} />;
+        return <ContractForm 
+          onContractSave={handleContractSave} 
+          managingUnits={managingUnits} 
+          companies={companies} 
+          saveCompany={saveCompany}
+          deleteCompany={deleteCompany}
+        />;
       case 'managing-units':
-        return <ManagingUnits initialUnits={managingUnits} refetchData={refetch} />;
+        return <ManagingUnits 
+          initialUnits={managingUnits} 
+          refetchData={refetch} 
+          saveUnit={saveUnit}
+          deleteUnit={deleteUnit}
+          saveProgram={saveProgram}
+          deleteProgram={deleteProgram}
+        />;
       case 'reports':
         return <Reports contracts={contracts} onContractSelect={handleContractSelect} managingUnits={managingUnits} />;
       case 'settings':
         return <Settings managingUnits={managingUnits} />;
       case 'contract-details':
-        return selectedContract ? <ContractDetails contract={selectedContract} onContractUpdate={handleContractUpdate} /> : <Dashboard onFilteredView={handleFilteredContractsView} contracts={contracts} onContractSelect={handleContractSelect} />;
+        return selectedContract ? (
+          <ContractDetails 
+            contract={selectedContract} 
+            onContractUpdate={handleContractUpdate} 
+            saveAdditive={saveAdditive}
+            deleteAdditive={deleteAdditive}
+            saveInvoice={saveInvoice}
+            deleteInvoice={deleteInvoice}
+          />
+        ) : <Dashboard onFilteredView={handleFilteredContractsView} contracts={contracts} onContractSelect={handleContractSelect} />;
       default:
         return <Dashboard onFilteredView={handleFilteredContractsView} contracts={contracts} onContractSelect={handleContractSelect} />;
     }

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Contract, ManagingUnit, Company } from '@/types/contract';
+import { Contract, ManagingUnit, Company, Additive, Invoice } from '@/types/contract';
 import { useToast } from '@/hooks/use-toast';
 
 interface SupabaseData {
@@ -12,21 +12,55 @@ interface SupabaseData {
   refetch: () => void;
 }
 
-// Função auxiliar para converter datas de string (do Supabase) para Date objects
+// Função auxiliar para converter nomes de campos de snake_case para camelCase (Frontend)
+const toCamelCase = (obj: any) => {
+  if (!obj || typeof obj !== 'object') return obj;
+  if (Array.isArray(obj)) return obj.map(toCamelCase);
+
+  const newObj: any = {};
+  for (const key in obj) {
+    if (Object.prototype.hasOwnProperty.call(obj, key)) {
+      const camelKey = key.replace(/(_\w)/g, (m) => m[1].toUpperCase());
+      newObj[camelKey] = obj[key];
+    }
+  }
+  return newObj;
+};
+
+// Função auxiliar para converter datas de string (do Supabase) para Date objects e aplicar camelCase
 const parseDates = (data: any[]): any[] => {
-  return data.map(item => ({
-    ...item,
-    startDate: item.start_date ? new Date(item.start_date) : undefined,
-    endDate: item.end_date ? new Date(item.end_date) : undefined,
-    additives: item.additives ? item.additives.map((a: any) => ({
-      ...a,
-      date: a.date ? new Date(a.date) : undefined,
-    })) : [],
-    invoices: item.invoices ? item.invoices.map((i: any) => ({
-      ...i,
-      date: i.date ? new Date(i.date) : undefined,
-    })) : [],
-  }));
+  return data.map(item => {
+    const camelCaseItem = toCamelCase(item);
+    
+    // Conversão de datas no nível principal
+    if (camelCaseItem.startDate) camelCaseItem.startDate = new Date(camelCaseItem.startDate);
+    if (camelCaseItem.endDate) camelCaseItem.endDate = new Date(camelCaseItem.endDate);
+
+    // Conversão de datas e estrutura para Aditivos
+    if (camelCaseItem.additives && Array.isArray(camelCaseItem.additives)) {
+      camelCaseItem.additives = camelCaseItem.additives.map((a: any) => {
+        const camelCaseAdditive = toCamelCase(a);
+        if (camelCaseAdditive.date) camelCaseAdditive.date = new Date(camelCaseAdditive.date);
+        return camelCaseAdditive as Additive;
+      });
+    }
+
+    // Conversão de datas e estrutura para Invoices
+    if (camelCaseItem.invoices && Array.isArray(camelCaseItem.invoices)) {
+      camelCaseItem.invoices = camelCaseItem.invoices.map((i: any) => {
+        const camelCaseInvoice = toCamelCase(i);
+        if (camelCaseInvoice.date) camelCaseInvoice.date = new Date(camelCaseInvoice.date);
+        return camelCaseInvoice as Invoice;
+      });
+    }
+    
+    // Conversão de estrutura para Programs (dentro de ManagingUnit)
+    if (camelCaseItem.programs && Array.isArray(camelCaseItem.programs)) {
+      camelCaseItem.programs = camelCaseItem.programs.map((p: any) => toCamelCase(p) as Program);
+    }
+
+    return camelCaseItem;
+  });
 };
 
 export function useSupabaseData(): SupabaseData {
@@ -72,11 +106,8 @@ export function useSupabaseData(): SupabaseData {
 
       // Mapear e converter dados
       const parsedContracts = parseDates(contractsData || []) as Contract[];
-      const parsedUnits = (unitsData || []).map(unit => ({
-        ...unit,
-        programs: unit.programs || []
-      })) as ManagingUnit[];
-      const parsedCompanies = companiesData || [] as Company[];
+      const parsedUnits = parseDates(unitsData || []) as ManagingUnit[];
+      const parsedCompanies = parseDates(companiesData || []) as Company[];
 
       setContracts(parsedContracts);
       setManagingUnits(parsedUnits);

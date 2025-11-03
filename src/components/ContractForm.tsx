@@ -11,23 +11,21 @@ import { Company, Contract, ManagingUnit } from "@/types/contract";
 import { Building2, User, FileText, Save, Search, Plus, X, Edit2, Trash2 } from "lucide-react";
 
 interface ContractFormProps {
-  onContractSave: (contract: Contract) => void;
+  onContractSave: (contract: Omit<Contract, 'id' | 'additives' | 'invoices'>) => void;
   managingUnits: ManagingUnit[];
   companies: Company[];
+  saveCompany: (companyData: Omit<Company, 'id'>, isEditing: boolean) => Promise<Company | null>;
+  deleteCompany: (companyId: string) => Promise<boolean>;
 }
 
-interface CompanyToEdit extends Company {
-  isEditing?: boolean;
-}
-
-export function ContractForm({ onContractSave, managingUnits, companies }: ContractFormProps) {
+export function ContractForm({ onContractSave, managingUnits, companies, saveCompany, deleteCompany }: ContractFormProps) {
   const { toast } = useToast();
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
   const [companySearchTerm, setCompanySearchTerm] = useState('');
   const [showCompanyForm, setShowCompanyForm] = useState(false);
   const [showCompanySearch, setShowCompanySearch] = useState(true);
   const [showCompanyList, setShowCompanyList] = useState(false);
-  const [editingCompanyId, setEditingCompanyId] = useState<string | null>(null);
+  const [editingCompany, setEditingCompany] = useState<Company | null>(null);
   
   const [companyFormData, setCompanyFormData] = useState({
     name: '',
@@ -72,67 +70,43 @@ export function ContractForm({ onContractSave, managingUnits, companies }: Contr
   };
 
   const handleNewCompany = () => {
+    setEditingCompany(null);
+    setCompanyFormData({ name: '', document: '', city: '', state: '' });
     setShowCompanyForm(true);
     setShowCompanySearch(false);
   };
 
-  const handleSaveCompany = () => {
-    // NOTE: Em uma implementação real, esta função faria um INSERT/UPDATE no Supabase.
-    // Aqui, estamos manipulando a lista de empresas passada via prop (que é imutável no App.tsx, mas mutável aqui para simulação).
+  const handleSaveCompany = async () => {
+    if (!companyFormData.name || !companyFormData.document || !companyFormData.city || !companyFormData.state) {
+      toast({ variant: "destructive", title: "Erro", description: "Preencha todos os campos obrigatórios da empresa." });
+      return;
+    }
+
+    const isEditing = !!editingCompany;
     
-    if (editingCompanyId) {
-      // Editar empresa existente
-      const companyIndex = companies.findIndex(c => c.id === editingCompanyId);
-      if (companyIndex !== -1) {
-        const updatedCompany = {
-          ...companies[companyIndex],
-          ...companyFormData
-        };
-        // companies[companyIndex] = updatedCompany; // Não podemos modificar diretamente o prop array
-        
-        // Se a empresa editada é a selecionada, atualizar a seleção
-        if (selectedCompany && selectedCompany.id === editingCompanyId) {
-          setSelectedCompany(updatedCompany);
-          setCompanySearchTerm(updatedCompany.name);
-        }
+    const dataToSave = isEditing 
+      ? { ...editingCompany, ...companyFormData } as Company
+      : companyFormData as Omit<Company, 'id'>;
 
-        toast({
-          variant: "success",
-          title: "Empresa atualizada com sucesso!",
-          description: companyFormData.name,
-        });
-      }
-      setEditingCompanyId(null);
-    } else {
-      // Criar nova empresa
-      const newCompany: Company = {
-        id: Date.now().toString(),
-        ...companyFormData
-      };
+    const result = await saveCompany(dataToSave, isEditing);
 
-      // companies.push(newCompany); // Não podemos modificar diretamente o prop array
-
-      setSelectedCompany(newCompany);
-      setCompanySearchTerm(newCompany.name);
-
-      toast({
-        variant: "success",
-        title: "Empresa cadastrada com sucesso!",
-        description: newCompany.name,
-      });
+    if (result) {
+      setSelectedCompany(result);
+      setCompanySearchTerm(result.name);
     }
 
     setCompanyFormData({ name: '', document: '', city: '', state: '' });
     setShowCompanyForm(false);
     setShowCompanySearch(false);
     setShowCompanyList(false);
+    setEditingCompany(null);
   };
 
   const handleCancelCompany = () => {
     setCompanyFormData({ name: '', document: '', city: '', state: '' });
     setShowCompanyForm(false);
     setShowCompanySearch(true);
-    setEditingCompanyId(null);
+    setEditingCompany(null);
   };
 
   const handleClearCompany = () => {
@@ -148,26 +122,26 @@ export function ContractForm({ onContractSave, managingUnits, companies }: Contr
   };
 
   const handleEditCompany = (company: Company) => {
+    setEditingCompany(company);
     setCompanyFormData({
       name: company.name,
       document: company.document,
       city: company.city,
       state: company.state
     });
-    setEditingCompanyId(company.id);
     setShowCompanyForm(true);
     setShowCompanyList(false);
     setShowCompanySearch(false);
   };
 
-  const handleDeleteCompany = (companyId: string) => {
+  const handleDeleteCompany = async (companyId: string) => {
     if (confirm('Tem certeza que deseja excluir esta empresa?')) {
-      // NOTE: Em uma implementação real, esta função faria um DELETE no Supabase.
-      toast({
-        variant: "success",
-        title: "Empresa excluída com sucesso!",
-        description: "Simulação de exclusão.",
-      });
+      const success = await deleteCompany(companyId);
+      if (success && selectedCompany?.id === companyId) {
+        setSelectedCompany(null);
+        setCompanySearchTerm('');
+        setShowCompanySearch(true);
+      }
     }
   };
 
@@ -175,48 +149,49 @@ export function ContractForm({ onContractSave, managingUnits, companies }: Contr
     setShowCompanyList(false);
     setShowCompanySearch(true);
     setCompanyFormData({ name: '', document: '', city: '', state: '' });
-    setEditingCompanyId(null);
+    setEditingCompany(null);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!selectedCompany) {
-      alert('Por favor, selecione uma empresa antes de salvar o contrato.');
+      toast({ variant: "destructive", title: "Erro", description: "Por favor, selecione uma empresa antes de salvar o contrato." });
+      return;
+    }
+    
+    if (!formData.contractNumber || !formData.modality || !formData.managingUnit || !formData.startDate || !formData.endDate || !formData.object || !formData.value) {
+      toast({ variant: "destructive", title: "Erro", description: "Preencha todos os campos obrigatórios do contrato." });
+      return;
+    }
+
+    const value = parseFloat(formData.value);
+    if (isNaN(value) || value <= 0) {
+      toast({ variant: "destructive", title: "Erro", description: "O valor do contrato deve ser um número positivo." });
       return;
     }
 
     // Criar o novo contrato
-    const contractData: Contract = {
-      id: Date.now().toString(),
+    const contractData: Omit<Contract, 'id' | 'additives' | 'invoices'> = {
       number: formData.contractNumber,
       modality: formData.modality as any,
-      isCarona: formData.modality === 'registro-preco' ? formData.isCarona : undefined,
+      isCarona: formData.modality === 'registro-preco' ? formData.isCarona : false,
       object: formData.object,
-      contractor: selectedCompany.name,
+      contractor: selectedCompany.name, // Usamos o nome da empresa selecionada
       managingUnit: formData.managingUnit,
-      originalValue: parseFloat(formData.value),
-      currentValue: parseFloat(formData.value),
+      originalValue: value,
+      currentValue: value,
       usedValue: 0,
-      remainingBalance: parseFloat(formData.value),
+      remainingBalance: value,
       startDate: new Date(formData.startDate),
       endDate: new Date(formData.endDate),
       status: 'active' as const,
-      additives: [],
-      invoices: []
     };
 
-    // Salvar o contrato usando a função passada como prop
+    // Salvar o contrato usando a função Supabase
     onContractSave(contractData);
     
-    // Mostrar toast de sucesso
-    toast({
-      variant: "success",
-      title: "Contrato cadastrado com sucesso!",
-      description: `Contrato ${formData.contractNumber} - ${selectedCompany.name}`,
-    });
-
-    // Limpar formulário
+    // Limpar formulário (será feito após o sucesso do saveContract no App.tsx)
     setFormData({
       contractNumber: '',
       modality: '',
@@ -250,7 +225,7 @@ export function ContractForm({ onContractSave, managingUnits, companies }: Contr
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {selectedCompany && !editingCompanyId ? (
+            {selectedCompany && !editingCompany ? (
               <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                 <div className="flex justify-between items-start">
                   <div>
@@ -340,7 +315,7 @@ export function ContractForm({ onContractSave, managingUnits, companies }: Contr
               <div className="space-y-4 border border-blue-200 rounded-lg p-4 bg-blue-50">
                 <div className="flex justify-between items-center">
                   <h4 className="font-semibold text-blue-800">
-                    {editingCompanyId ? 'Editar Empresa' : 'Cadastrar Nova Empresa'}
+                    {editingCompany ? 'Editar Empresa' : 'Cadastrar Nova Empresa'}
                   </h4>
                   <Button
                     type="button"
@@ -432,7 +407,7 @@ export function ContractForm({ onContractSave, managingUnits, companies }: Contr
                     className="bg-blue-600 hover:bg-blue-700"
                   >
                     <Save className="w-4 h-4 mr-2" />
-                    {editingCompanyId ? 'Atualizar Empresa' : 'Salvar Empresa'}
+                    {editingCompany ? 'Atualizar Empresa' : 'Salvar Empresa'}
                   </Button>
                 </div>
               </div>

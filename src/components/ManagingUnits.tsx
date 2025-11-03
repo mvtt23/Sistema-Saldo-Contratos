@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ManagingUnit, Program } from "@/types/contract";
 import { Building2, Plus, CreditCard as Edit, Trash2, BookOpen, User, Search, X } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 interface Fiscal {
   id: string;
@@ -38,9 +39,14 @@ const mockFiscals: Fiscal[] = [
 interface ManagingUnitsProps {
   initialUnits: ManagingUnit[];
   refetchData: () => void;
+  saveUnit: (unitData: Omit<ManagingUnit, 'programs'>, isEditing: boolean) => Promise<ManagingUnit | null>;
+  deleteUnit: (unitId: string) => Promise<boolean>;
+  saveProgram: (programData: Omit<Program, 'id'>, isEditing: boolean) => Promise<Program | null>;
+  deleteProgram: (programId: string) => Promise<boolean>;
 }
 
-export function ManagingUnits({ initialUnits, refetchData }: ManagingUnitsProps) {
+export function ManagingUnits({ initialUnits, refetchData, saveUnit, deleteUnit, saveProgram, deleteProgram }: ManagingUnitsProps) {
+  const { toast } = useToast();
   const [units, setUnits] = useState<ManagingUnit[]>(initialUnits);
   const [fiscals, setFiscals] = useState<Fiscal[]>(mockFiscals);
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -53,12 +59,16 @@ export function ManagingUnits({ initialUnits, refetchData }: ManagingUnitsProps)
   const [showFiscalForm, setShowFiscalForm] = useState(false);
   const [showFiscalSearch, setShowFiscalSearch] = useState(false);
   const [formData, setFormData] = useState({
+    id: '',
     name: '',
     responsible: '',
     code: '',
-    fiscalId: ''
+    fiscalId: '',
+    email: '',
+    phone: ''
   });
   const [programFormData, setProgramFormData] = useState({
+    id: '',
     name: '',
     unitId: ''
   });
@@ -102,6 +112,7 @@ export function ManagingUnits({ initialUnits, refetchData }: ManagingUnitsProps)
   };
 
   const handleSaveFiscal = () => {
+    // NOTE: Esta é uma função mockada, pois fiscais não estão no Supabase
     const newFiscal: Fiscal = {
       id: Date.now().toString(),
       ...fiscalFormData
@@ -124,81 +135,54 @@ export function ManagingUnits({ initialUnits, refetchData }: ManagingUnitsProps)
     setShowFiscalSearch(true);
   };
   
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // NOTE: Em uma implementação real, esta função faria um INSERT/UPDATE no Supabase.
-    // Após a operação, você chamaria refetchData().
-    
-    if (editingUnit) {
-      // Editar unidade existente
-      setUnits(prev => prev.map(unit => 
-        unit.id === editingUnit.id 
-          ? { ...unit, ...formData, programs: unit.programs, email: `${formData.name.toLowerCase().replace(/\s+/g, '.')}@prefeitura.gov.br` }
-          : unit
-      ));
-    } else {
-      // Criar nova unidade
-      const newUnit: ManagingUnit = {
-        id: Date.now().toString(),
-        name: formData.name,
-        responsible: formData.responsible,
-        code: formData.code || formData.name.split(' ').map(word => word.charAt(0)).join('').toUpperCase(),
-        fiscalId: formData.fiscalId,
-        email: `${formData.name.toLowerCase().replace(/\s+/g, '.')}@prefeitura.gov.br`,
-        phone: '(11) 3333-0000', // Default phone
-        programs: []
-      };
-      setUnits(prev => [...prev, newUnit]);
+    if (!formData.name || !formData.responsible || !formData.fiscalId) {
+      toast({ title: "Erro", description: "Preencha os campos obrigatórios (Nome, Responsável, Fiscal).", variant: "destructive" });
+      return;
     }
 
-    // Reset form
-    setFormData({ name: '', responsible: '', code: '', fiscalId: '' });
-    setSelectedFiscal(null);
-    setFiscalSearchTerm('');
-    setIsFormOpen(false);
-    setEditingUnit(null);
+    const isEditing = !!editingUnit;
     
-    // refetchData(); // Chamar refetch para atualizar o estado global
+    const unitData: Omit<ManagingUnit, 'programs'> = {
+      id: isEditing ? editingUnit!.id : '',
+      name: formData.name,
+      responsible: formData.responsible,
+      code: formData.code || formData.name.split(' ').map(word => word.charAt(0)).join('').toUpperCase(),
+      fiscalId: formData.fiscalId,
+      email: formData.email || `${formData.name.toLowerCase().replace(/\s+/g, '.')}@prefeitura.gov.br`,
+      phone: formData.phone || '(11) 3333-0000',
+    };
+
+    const result = await saveUnit(unitData, isEditing);
+
+    if (result) {
+      handleCancel();
+    }
   };
 
-  const handleProgramSubmit = (e: React.FormEvent) => {
+  const handleProgramSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // NOTE: Em uma implementação real, esta função faria um INSERT/UPDATE no Supabase.
-    
-    if (editingProgram) {
-      // Editar programa existente
-      setUnits(prev => prev.map(unit => ({
-        ...unit,
-        programs: unit.programs.map(program => 
-          program.id === editingProgram.id 
-            ? { ...program, ...programFormData }
-            : program
-        )
-      })));
-    } else {
-      // Criar novo programa
-      const newProgram: Program = {
-        id: Date.now().toString(),
-        name: programFormData.name,
-        unitId: programFormData.unitId
-      };
-      
-      // Adicionar à unidade correspondente
-      setUnits(prev => prev.map(unit => 
-        unit.id === programFormData.unitId 
-          ? { ...unit, programs: [...unit.programs, newProgram] }
-          : unit
-      ));
+    if (!programFormData.name || !programFormData.unitId) {
+      toast({ title: "Erro", description: "Preencha o nome do programa e selecione a secretaria.", variant: "destructive" });
+      return;
     }
 
-    // Reset form
-    setProgramFormData({ name: '', unitId: '' });
-    setIsProgramFormOpen(false);
-    setEditingProgram(null);
-    setSelectedUnitForProgram('');
-    // refetchData(); // Chamar refetch para atualizar o estado global
+    const isEditing = !!editingProgram;
+    
+    const programData: Omit<Program, 'id'> = {
+      id: isEditing ? editingProgram!.id : '',
+      name: programFormData.name,
+      unitId: programFormData.unitId
+    };
+
+    const result = await saveProgram(programData, isEditing);
+
+    if (result) {
+      handleCancelProgram();
+    }
   };
 
   const handleEdit = (unit: ManagingUnit) => {
@@ -212,10 +196,13 @@ export function ManagingUnits({ initialUnits, refetchData }: ManagingUnitsProps)
       setFiscalSearchTerm('');
     }
     setFormData({
+      id: unit.id,
       name: unit.name,
       responsible: unit.responsible,
       code: unit.code,
-      fiscalId: unit.fiscalId || ''
+      fiscalId: unit.fiscalId || '',
+      email: unit.email || '',
+      phone: unit.phone || ''
     });
     setIsFormOpen(true);
   };
@@ -223,39 +210,34 @@ export function ManagingUnits({ initialUnits, refetchData }: ManagingUnitsProps)
   const handleEditProgram = (program: Program) => {
     setEditingProgram(program);
     setProgramFormData({
+      id: program.id,
       name: program.name,
       unitId: program.unitId
     });
     setIsProgramFormOpen(true);
   };
 
-  const handleDeleteProgram = (programId: string) => {
+  const handleDeleteProgram = async (programId: string) => {
     if (confirm('Tem certeza que deseja excluir este programa?')) {
-      // NOTE: Em uma implementação real, esta função faria um DELETE no Supabase.
-      setUnits(prev => prev.map(unit => ({
-        ...unit,
-        programs: unit.programs.filter(program => program.id !== programId)
-      })));
-      // refetchData(); // Chamar refetch para atualizar o estado global
+      await deleteProgram(programId);
     }
   };
 
   const handleAddProgram = (unitId: string) => {
     setSelectedUnitForProgram(unitId);
-    setProgramFormData({ name: '', unitId });
+    setProgramFormData({ id: '', name: '', unitId });
+    setEditingProgram(null);
     setIsProgramFormOpen(true);
   };
 
-  const handleDelete = (id: string) => {
-    if (confirm('Tem certeza que deseja excluir esta unidade gestora?')) {
-      // NOTE: Em uma implementação real, esta função faria um DELETE no Supabase.
-      setUnits(prev => prev.filter(unit => unit.id !== id));
-      // refetchData(); // Chamar refetch para atualizar o estado global
+  const handleDelete = async (id: string) => {
+    if (confirm('Tem certeza que deseja excluir esta unidade gestora? Isso excluirá todos os programas vinculados.')) {
+      await deleteUnit(id);
     }
   };
 
   const handleCancel = () => {
-    setFormData({ name: '', responsible: '', code: '', fiscalId: '' });
+    setFormData({ id: '', name: '', responsible: '', code: '', fiscalId: '', email: '', phone: '' });
     setSelectedFiscal(null);
     setFiscalSearchTerm('');
     setShowFiscalSearch(false);
@@ -265,7 +247,7 @@ export function ManagingUnits({ initialUnits, refetchData }: ManagingUnitsProps)
   };
 
   const handleCancelProgram = () => {
-    setProgramFormData({ name: '', unitId: '' });
+    setProgramFormData({ id: '', name: '', unitId: '' });
     setIsProgramFormOpen(false);
     setEditingProgram(null);
     setSelectedUnitForProgram('');
@@ -279,7 +261,10 @@ export function ManagingUnits({ initialUnits, refetchData }: ManagingUnitsProps)
           <p className="text-gray-600">Gerencie as secretarias e programas da prefeitura</p>
         </div>
         <Button 
-          onClick={() => setIsFormOpen(true)}
+          onClick={() => {
+            handleCancel();
+            setIsFormOpen(true);
+          }}
           className="bg-blue-600 hover:bg-blue-700"
         >
           <Plus className="w-4 h-4 mr-2" />
@@ -287,7 +272,7 @@ export function ManagingUnits({ initialUnits, refetchData }: ManagingUnitsProps)
         </Button>
       </div>
 
-      {/* Formulário */}
+      {/* Formulário da Unidade */}
       {isFormOpen && (
         <Card>
           <CardHeader>
@@ -321,14 +306,24 @@ export function ManagingUnits({ initialUnits, refetchData }: ManagingUnitsProps)
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="code">Código (Opcional)</Label>
                   <Input
                     id="code"
                     value={formData.code}
                     onChange={(e) => handleInputChange('code', e.target.value)}
-                    placeholder="Ex: SEMED (será gerado automaticamente se vazio)"
+                    placeholder="Ex: SEMED"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="email">Email (Opcional)</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => handleInputChange('email', e.target.value)}
+                    placeholder="email@prefeitura.gov.br"
                   />
                 </div>
               </div>
