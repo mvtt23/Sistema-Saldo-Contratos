@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { managingUnits, companies, programs } from "@/data/mockData";
-import { Company } from "@/types/contract";
+import { Company, Contract } from "@/types/contract";
 import { Building2, User, FileText, Save, Search, Plus, X, Edit2, Trash2 } from "lucide-react";
 
 interface ContractFormProps {
