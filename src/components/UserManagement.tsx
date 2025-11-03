@@ -42,28 +42,78 @@ const MODULES = [
   { module: 'reports', label: 'Relatórios', icon: FileText },
 ];
 
+// Mock data for initial users (excluding admin from this list as it's handled by AuthContext)
+const initialMockUsers: User[] = [
+  // Adicionando um usuário de exemplo para aparecer na lista (não admin)
+  { id: 'user-1', username: 'fiscal_saude', role: 'viewer', is_active: true, created_at: new Date().toISOString() },
+  { id: 'user-2', username: 'gestor_obras', role: 'manager', is_active: false, created_at: new Date().toISOString() },
+];
+
+// Mock permissions for non-admin users
+const mockPermissions: Record<string, ModulePermissions[]> = {
+  'user-1': [
+    { module: 'dashboard', label: 'Dashboard', icon: FileText, can_view: true, can_edit: false, can_create: false, can_delete: false },
+    { module: 'contracts', label: 'Contratos', icon: FileText, can_view: true, can_edit: false, can_create: false, can_delete: false },
+    { module: 'managing_units', label: 'Unidades Gestoras', icon: FileText, can_view: true, can_edit: false, can_create: false, can_delete: false },
+    { module: 'reports', label: 'Relatórios', icon: FileText, can_view: true, can_edit: false, can_create: false, can_delete: false },
+  ],
+  'user-2': [
+    { module: 'dashboard', label: 'Dashboard', icon: FileText, can_view: true, can_edit: true, can_create: true, can_delete: false },
+    { module: 'contracts', label: 'Contratos', icon: FileText, can_view: true, can_edit: true, can_create: true, can_delete: false },
+    { module: 'managing_units', label: 'Unidades Gestoras', icon: FileText, can_view: true, can_edit: false, can_create: false, can_delete: false },
+    { module: 'reports', label: 'Relatórios', icon: FileText, can_view: true, can_edit: false, can_create: false, can_delete: false },
+  ],
+};
+
+
 export function UserManagement() {
-  const [users, setUsers] = useState<User[]>([]);
+  const [users, setUsers] = useState<User[]>(initialMockUsers);
   const [isAddingUser, setIsAddingUser] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [editingPermissions, setEditingPermissions] = useState<string | null>(null);
   const [userForm, setUserForm] = useState({ username: '', password: '' });
-  const [permissions, setPermissions] = useState<Record<string, ModulePermissions[]>>({});
+  const [permissions, setPermissions] = useState<Record<string, ModulePermissions[]>>(mockPermissions);
   const { toast } = useToast();
 
   const handleSaveUser = async () => {
-    if (!userForm.username || !userForm.password) {
+    if (!userForm.username || (!editingUser && !userForm.password)) {
       toast({
         title: "Erro",
-        description: "Preencha todos os campos",
+        description: "Preencha o nome de usuário e a senha",
         variant: "destructive",
       });
       return;
     }
 
+    if (editingUser) {
+      setUsers(prev => prev.map(u => u.id === editingUser.id ? { ...u, username: userForm.username } : u));
+    } else {
+      const newUser: User = {
+        id: Date.now().toString(),
+        username: userForm.username,
+        role: 'viewer', // Novo usuário começa como viewer
+        is_active: true,
+        created_at: new Date().toISOString(),
+      };
+      setUsers(prev => [...prev, newUser]);
+      
+      // Inicializa permissões para o novo usuário
+      setPermissions(prev => ({
+        ...prev,
+        [newUser.id]: MODULES.map(mod => ({
+          ...mod,
+          can_view: true,
+          can_edit: false,
+          can_create: false,
+          can_delete: false,
+        }))
+      }));
+    }
+
     toast({
       title: "Sucesso",
       description: editingUser ? "Usuário atualizado com sucesso" : "Usuário criado com sucesso",
+      variant: "success"
     });
 
     setUserForm({ username: '', password: '' });
@@ -80,16 +130,28 @@ export function UserManagement() {
   const handleDeleteUser = async (id: string) => {
     if (!confirm('Tem certeza que deseja excluir este usuário?')) return;
 
+    setUsers(prev => prev.filter(u => u.id !== id));
+    setPermissions(prev => {
+      const newPermissions = { ...prev };
+      delete newPermissions[id];
+      return newPermissions;
+    });
+
     toast({
       title: "Sucesso",
       description: "Usuário excluído com sucesso",
+      variant: "success"
     });
   };
 
   const handleToggleActive = async (user: User) => {
+    const updatedUser = { ...user, is_active: !user.is_active };
+    setUsers(prev => prev.map(u => u.id === user.id ? updatedUser : u));
+    
     toast({
       title: "Sucesso",
       description: `Usuário ${!user.is_active ? 'ativado' : 'desativado'} com sucesso`,
+      variant: "success"
     });
   };
 
@@ -103,9 +165,13 @@ export function UserManagement() {
   };
 
   const handleSavePermissions = async (userId: string) => {
+    // Aqui, em uma aplicação real, você enviaria as permissões atualizadas para o Supabase.
+    // Como estamos usando mock, apenas confirmamos o salvamento.
+    
     toast({
       title: "Sucesso",
       description: "Permissões atualizadas com sucesso",
+      variant: "success"
     });
     setEditingPermissions(null);
   };

@@ -28,6 +28,22 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Usuário Admin Mockado para desenvolvimento
+const MOCK_ADMIN_USER: User = {
+  id: 'admin-mock-id',
+  username: 'admin',
+  role: 'admin',
+  is_active: true,
+  permissions: [
+    { module: 'dashboard', can_view: true, can_edit: true, can_create: true, can_delete: true, id: '1', user_id: 'admin-mock-id' },
+    { module: 'contracts', can_view: true, can_edit: true, can_create: true, can_delete: true, id: '2', user_id: 'admin-mock-id' },
+    { module: 'managing_units', can_view: true, can_edit: true, can_create: true, can_delete: true, id: '3', user_id: 'admin-mock-id' },
+    { module: 'reports', can_view: true, can_edit: true, can_create: true, can_delete: true, id: '4', user_id: 'admin-mock-id' },
+    { module: 'settings', can_view: true, can_edit: true, can_create: true, can_delete: true, id: '5', user_id: 'admin-mock-id' },
+  ],
+};
+
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -41,6 +57,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signIn = async (username: string, password: string) => {
+    // Lógica de login mockado para o admin padrão
+    if (username === 'admin' && password === 'admin123') {
+      setUser(MOCK_ADMIN_USER);
+      localStorage.setItem('user', JSON.stringify(MOCK_ADMIN_USER));
+      return { error: null };
+    }
+    
+    // Lógica de login real (Supabase)
     try {
       const { data: userData, error: userError } = await supabase
         .from('users')
@@ -70,10 +94,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         permissions: permissionsData || [],
       };
 
-      setUser(userWithPermissions);
+      setUser(userWithPermissions as User);
       localStorage.setItem('user', JSON.stringify(userWithPermissions));
       return { error: null };
     } catch (error) {
+      console.error("Supabase login error:", error);
       return { error };
     }
   };
