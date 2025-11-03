@@ -53,9 +53,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .eq('password', password)
         .maybeSingle();
 
-      if (userError || !userData) {
-        console.error("Erro ao buscar usuário:", userError);
-        return { error: { message: 'Credenciais inválidas' } };
+      if (userError) {
+        console.error("Supabase Error during sign-in query:", userError);
+        return { error: { message: `Erro do Supabase: ${userError.message}` } };
+      }
+
+      if (!userData) {
+        console.log("Login failed: No user data returned (check RLS or credentials).");
+        return { error: { message: 'Credenciais inválidas. Verifique seu usuário e senha.' } };
       }
 
       if (!userData.is_active) {
@@ -80,7 +85,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem('user', JSON.stringify(userWithPermissions));
       return { error: null };
     } catch (error) {
-      console.error("Supabase login error:", error);
+      console.error("Supabase login error (Catch block):", error);
       return { error: { message: 'Erro ao tentar conectar ao servidor.' } };
     }
   };
