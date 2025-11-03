@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { contracts, managingUnits } from "@/data/mockData";
 import { formatCurrency } from "@/lib/utils";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { 
@@ -15,11 +14,12 @@ import {
   Filter,
   Building2
 } from "lucide-react";
-import { Contract } from "@/types/contract";
+import { Contract, ManagingUnit } from "@/types/contract";
 
 interface DashboardProps {
   onFilteredView: (filters: { status?: string; modality?: string; unit?: string }) => void;
-  contracts?: Contract[];
+  contracts: Contract[]; // Agora é obrigatório
+  managingUnits: ManagingUnit[]; // Adicionando managingUnits como prop
   onContractSelect?: (contract: Contract) => void;
 }
 
@@ -34,11 +34,8 @@ const modalityLabels = {
 // Paleta de cores institucionais moderna
 const COLORS = ['#2563EB', '#16A34A', '#F97316', '#7C3AED', '#0891B2', '#DC2626'];
 
-export function Dashboard({ onFilteredView, contracts: contractsProp, onContractSelect }: DashboardProps) {
+export function Dashboard({ onFilteredView, contracts, managingUnits, onContractSelect }: DashboardProps) {
   const [selectedUnit, setSelectedUnit] = useState<string>('all');
-
-  // Usar contratos passados como prop ou os dados mock como fallback
-  const contracts = contractsProp || contracts;
 
   // Filtrar contratos por secretaria selecionada
   const filteredContracts = selectedUnit === 'all' 

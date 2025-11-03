@@ -83,7 +83,12 @@ function App() {
   const renderContent = () => {
     switch (activePage) {
       case 'overview':
-        return <Dashboard onFilteredView={handleFilteredContractsView} contracts={contracts} onContractSelect={handleContractSelect} />;
+        return <Dashboard 
+          onFilteredView={handleFilteredContractsView} 
+          contracts={contracts} 
+          managingUnits={managingUnits} // Passando managingUnits
+          onContractSelect={handleContractSelect} 
+        />;
       case 'contracts':
         return <ContractList contracts={contracts} onContractSelect={handleContractSelect} initialFilters={contractFilters} />;
       case 'contract-form':
@@ -117,9 +122,9 @@ function App() {
             saveInvoice={saveInvoice}
             deleteInvoice={deleteInvoice}
           />
-        ) : <Dashboard onFilteredView={handleFilteredContractsView} contracts={contracts} onContractSelect={handleContractSelect} />;
+        ) : <Dashboard onFilteredView={handleFilteredContractsView} contracts={contracts} managingUnits={managingUnits} onContractSelect={handleContractSelect} />;
       default:
-        return <Dashboard onFilteredView={handleFilteredContractsView} contracts={contracts} onContractSelect={handleContractSelect} />;
+        return <Dashboard onFilteredView={handleFilteredContractsView} contracts={contracts} managingUnits={managingUnits} onContractSelect={handleContractSelect} />;
     }
   };
 
