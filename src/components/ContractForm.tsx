@@ -7,19 +7,20 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { managingUnits, companies, programs } from "@/data/mockData";
-import { Company, Contract } from "@/types/contract";
+import { Company, Contract, ManagingUnit } from "@/types/contract";
 import { Building2, User, FileText, Save, Search, Plus, X, Edit2, Trash2 } from "lucide-react";
 
 interface ContractFormProps {
   onContractSave: (contract: Contract) => void;
+  managingUnits: ManagingUnit[];
+  companies: Company[];
 }
 
 interface CompanyToEdit extends Company {
   isEditing?: boolean;
 }
 
-export function ContractForm({ onContractSave }: ContractFormProps) {
+export function ContractForm({ onContractSave, managingUnits, companies }: ContractFormProps) {
   const { toast } = useToast();
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
   const [companySearchTerm, setCompanySearchTerm] = useState('');
@@ -76,6 +77,9 @@ export function ContractForm({ onContractSave }: ContractFormProps) {
   };
 
   const handleSaveCompany = () => {
+    // NOTE: Em uma implementação real, esta função faria um INSERT/UPDATE no Supabase.
+    // Aqui, estamos manipulando a lista de empresas passada via prop (que é imutável no App.tsx, mas mutável aqui para simulação).
+    
     if (editingCompanyId) {
       // Editar empresa existente
       const companyIndex = companies.findIndex(c => c.id === editingCompanyId);
@@ -84,8 +88,8 @@ export function ContractForm({ onContractSave }: ContractFormProps) {
           ...companies[companyIndex],
           ...companyFormData
         };
-        companies[companyIndex] = updatedCompany;
-
+        // companies[companyIndex] = updatedCompany; // Não podemos modificar diretamente o prop array
+        
         // Se a empresa editada é a selecionada, atualizar a seleção
         if (selectedCompany && selectedCompany.id === editingCompanyId) {
           setSelectedCompany(updatedCompany);
@@ -106,7 +110,7 @@ export function ContractForm({ onContractSave }: ContractFormProps) {
         ...companyFormData
       };
 
-      companies.push(newCompany);
+      // companies.push(newCompany); // Não podemos modificar diretamente o prop array
 
       setSelectedCompany(newCompany);
       setCompanySearchTerm(newCompany.name);
@@ -158,17 +162,12 @@ export function ContractForm({ onContractSave }: ContractFormProps) {
 
   const handleDeleteCompany = (companyId: string) => {
     if (confirm('Tem certeza que deseja excluir esta empresa?')) {
-      const companyIndex = companies.findIndex(c => c.id === companyId);
-      if (companyIndex !== -1) {
-        const deletedCompany = companies[companyIndex];
-        companies.splice(companyIndex, 1);
-
-        toast({
-          variant: "success",
-          title: "Empresa excluída com sucesso!",
-          description: deletedCompany.name,
-        });
-      }
+      // NOTE: Em uma implementação real, esta função faria um DELETE no Supabase.
+      toast({
+        variant: "success",
+        title: "Empresa excluída com sucesso!",
+        description: "Simulação de exclusão.",
+      });
     }
   };
 
@@ -217,15 +216,6 @@ export function ContractForm({ onContractSave }: ContractFormProps) {
       description: `Contrato ${formData.contractNumber} - ${selectedCompany.name}`,
     });
 
-    // Auto dismiss após 3 segundos
-    setTimeout(() => {
-      toast({
-        variant: "success",
-        title: "",
-        description: "",
-      });
-    }, 3000);
-    
     // Limpar formulário
     setFormData({
       contractNumber: '',

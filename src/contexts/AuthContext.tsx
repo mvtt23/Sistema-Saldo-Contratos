@@ -28,22 +28,6 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Usuário Admin Mockado para desenvolvimento
-const MOCK_ADMIN_USER: User = {
-  id: 'admin-mock-id',
-  username: 'admin',
-  role: 'admin',
-  is_active: true,
-  permissions: [
-    { module: 'dashboard', can_view: true, can_edit: true, can_create: true, can_delete: true, id: '1', user_id: 'admin-mock-id' },
-    { module: 'contracts', can_view: true, can_edit: true, can_create: true, can_delete: true, id: '2', user_id: 'admin-mock-id' },
-    { module: 'managing_units', can_view: true, can_edit: true, can_create: true, can_delete: true, id: '3', user_id: 'admin-mock-id' },
-    { module: 'reports', can_view: true, can_edit: true, can_create: true, can_delete: true, id: '4', user_id: 'admin-mock-id' },
-    { module: 'settings', can_view: true, can_edit: true, can_create: true, can_delete: true, id: '5', user_id: 'admin-mock-id' },
-  ],
-};
-
-
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -57,15 +41,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signIn = async (username: string, password: string) => {
-    // Lógica de login mockado para o admin padrão
-    if (username === 'admin' && password === 'admin123') {
-      setUser(MOCK_ADMIN_USER);
-      localStorage.setItem('user', JSON.stringify(MOCK_ADMIN_USER));
-      return { error: null };
-    }
-    
     // Lógica de login real (Supabase)
     try {
+      // Nota: Em um ambiente de produção, a senha NUNCA deve ser armazenada em texto simples.
+      // O Supabase Auth deve ser usado para hashing de senha, mas aqui estamos simulando
+      // a busca na tabela 'users' conforme a estrutura do seu banco de dados mockado.
       const { data: userData, error: userError } = await supabase
         .from('users')
         .select('id, username, role, is_active')
@@ -74,6 +54,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .maybeSingle();
 
       if (userError || !userData) {
+        console.error("Erro ao buscar usuário:", userError);
         return { error: { message: 'Credenciais inválidas' } };
       }
 
@@ -81,12 +62,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { error: { message: 'Usuário inativo. Entre em contato com o administrador.' } };
       }
 
+      // Buscar permissões do usuário
       const { data: permissionsData } = await supabase
         .from('user_permissions')
         .select('module, can_view, can_edit, can_create, can_delete')
         .eq('user_id', userData.id);
 
-      const userWithPermissions = {
+      const userWithPermissions: User = {
         id: userData.id,
         username: userData.username,
         role: userData.role,
@@ -94,12 +76,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         permissions: permissionsData || [],
       };
 
-      setUser(userWithPermissions as User);
+      setUser(userWithPermissions);
       localStorage.setItem('user', JSON.stringify(userWithPermissions));
       return { error: null };
     } catch (error) {
       console.error("Supabase login error:", error);
-      return { error };
+      return { error: { message: 'Erro ao tentar conectar ao servidor.' } };
     }
   };
 

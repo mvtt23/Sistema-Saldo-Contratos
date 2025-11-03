@@ -5,18 +5,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { managingUnits, contracts as mockContracts } from "@/data/mockData";
-import { Contract } from "@/types/contract";
+import { Contract, ManagingUnit } from "@/types/contract";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { FileBarChart, Download, Search, Calendar, Building2 } from "lucide-react";
 
 interface ReportsProps {
-  contracts?: Contract[];
+  contracts: Contract[];
+  managingUnits: ManagingUnit[];
   onContractSelect?: (contract: Contract) => void;
 }
 
-export function Reports({ contracts: contractsProp, onContractSelect }: ReportsProps) {
-  const contracts = contractsProp || mockContracts;
+export function Reports({ contracts, managingUnits, onContractSelect }: ReportsProps) {
   const [reportType, setReportType] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState('');
   const [filteredContracts, setFilteredContracts] = useState<Contract[]>([]);

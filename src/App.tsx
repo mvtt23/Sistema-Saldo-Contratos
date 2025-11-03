@@ -10,14 +10,15 @@ import { ContractForm } from "@/components/ContractForm";
 import { ManagingUnits } from "@/components/ManagingUnits";
 import { Reports } from "@/components/Reports";
 import { Settings } from "@/components/Settings";
-import { contracts as initialContracts } from "@/data/mockData";
-import { Contract } from "@/types/contract";
+import { Contract, ManagingUnit, Company } from "@/types/contract";
+import { useSupabaseData } from '@/hooks/useSupabaseData';
 
 export type PageType = 'overview' | 'contracts' | 'contract-form' | 'managing-units' | 'reports' | 'settings' | 'contract-details';
 
 function App() {
-  const { user, loading } = useAuth();
-  const [contracts, setContracts] = useState<Contract[]>(initialContracts);
+  const { user, loading: authLoading } = useAuth();
+  const { contracts, managingUnits, companies, loading: dataLoading, refetch } = useSupabaseData();
+  
   const [selectedContract, setSelectedContract] = useState<Contract | null>(null);
   const [activePage, setActivePage] = useState<PageType>("overview");
   const [contractFilters, setContractFilters] = useState<{
@@ -27,10 +28,15 @@ function App() {
   }>({});
 
   const handleContractSave = (newContract: Contract) => {
+    // Em uma implementação real, esta função faria um INSERT no Supabase e chamaria refetch.
+    // Por enquanto, apenas adicionamos localmente para simulação.
+    // TODO: Implementar INSERT real no Supabase
     setContracts(prev => [...prev, newContract]);
   };
 
   const handleContractUpdate = (updatedContract: Contract) => {
+    // Em uma implementação real, esta função faria um UPDATE no Supabase e chamaria refetch.
+    // TODO: Implementar UPDATE real no Supabase
     setContracts(prev => prev.map(contract => 
       contract.id === updatedContract.id ? updatedContract : contract
     ));
@@ -38,6 +44,7 @@ function App() {
       setSelectedContract(updatedContract);
     }
   };
+  
   const handleContractSelect = (contract: Contract) => {
     setSelectedContract(contract);
     setActivePage("contract-details");
@@ -65,13 +72,13 @@ function App() {
       case 'contracts':
         return <ContractList contracts={contracts} onContractSelect={handleContractSelect} initialFilters={contractFilters} />;
       case 'contract-form':
-        return <ContractForm onContractSave={handleContractSave} />;
+        return <ContractForm onContractSave={handleContractSave} managingUnits={managingUnits} companies={companies} />;
       case 'managing-units':
-        return <ManagingUnits />;
+        return <ManagingUnits initialUnits={managingUnits} refetchData={refetch} />;
       case 'reports':
-        return <Reports contracts={contracts} onContractSelect={handleContractSelect} />;
+        return <Reports contracts={contracts} onContractSelect={handleContractSelect} managingUnits={managingUnits} />;
       case 'settings':
-        return <Settings />;
+        return <Settings managingUnits={managingUnits} />;
       case 'contract-details':
         return selectedContract ? <ContractDetails contract={selectedContract} onContractUpdate={handleContractUpdate} /> : <Dashboard onFilteredView={handleFilteredContractsView} contracts={contracts} onContractSelect={handleContractSelect} />;
       default:
@@ -79,12 +86,12 @@ function App() {
     }
   };
 
-  if (loading) {
+  if (authLoading || dataLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-slate-900 mx-auto"></div>
-          <p className="mt-4 text-slate-600">Carregando...</p>
+          <p className="mt-4 text-slate-600">Carregando dados...</p>
         </div>
       </div>
     );

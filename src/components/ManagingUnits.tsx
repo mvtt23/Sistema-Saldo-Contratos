@@ -3,7 +3,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { managingUnits, programs } from "@/data/mockData";
 import { ManagingUnit, Program } from "@/types/contract";
 import { Building2, Plus, CreditCard as Edit, Trash2, BookOpen, User, Search, X } from "lucide-react";
 
@@ -14,7 +13,7 @@ interface Fiscal {
   ordinance: string;
 }
 
-// Mock data for fiscals
+// Mock data for fiscals (Fiscais não estão no Supabase, mantendo mock localmente)
 const mockFiscals: Fiscal[] = [
   {
     id: '1',
@@ -36,9 +35,13 @@ const mockFiscals: Fiscal[] = [
   }
 ];
 
-export function ManagingUnits() {
-  const [units, setUnits] = useState<ManagingUnit[]>(managingUnits);
-  const [allPrograms, setAllPrograms] = useState<Program[]>(programs);
+interface ManagingUnitsProps {
+  initialUnits: ManagingUnit[];
+  refetchData: () => void;
+}
+
+export function ManagingUnits({ initialUnits, refetchData }: ManagingUnitsProps) {
+  const [units, setUnits] = useState<ManagingUnit[]>(initialUnits);
   const [fiscals, setFiscals] = useState<Fiscal[]>(mockFiscals);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingUnit, setEditingUnit] = useState<ManagingUnit | null>(null);
@@ -64,6 +67,11 @@ export function ManagingUnits() {
     cpf: '',
     ordinance: ''
   });
+
+  // Atualiza o estado local quando a prop initialUnits muda (dados do Supabase)
+  useState(() => {
+    setUnits(initialUnits);
+  }, [initialUnits]);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -115,8 +123,12 @@ export function ManagingUnits() {
     setFormData(prev => ({ ...prev, fiscalId: '' }));
     setShowFiscalSearch(true);
   };
+  
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // NOTE: Em uma implementação real, esta função faria um INSERT/UPDATE no Supabase.
+    // Após a operação, você chamaria refetchData().
     
     if (editingUnit) {
       // Editar unidade existente
@@ -129,10 +141,12 @@ export function ManagingUnits() {
       // Criar nova unidade
       const newUnit: ManagingUnit = {
         id: Date.now().toString(),
-        ...formData,
+        name: formData.name,
+        responsible: formData.responsible,
+        code: formData.code || formData.name.split(' ').map(word => word.charAt(0)).join('').toUpperCase(),
+        fiscalId: formData.fiscalId,
         email: `${formData.name.toLowerCase().replace(/\s+/g, '.')}@prefeitura.gov.br`,
         phone: '(11) 3333-0000', // Default phone
-        code: formData.code || formData.name.split(' ').map(word => word.charAt(0)).join('').toUpperCase(),
         programs: []
       };
       setUnits(prev => [...prev, newUnit]);
@@ -144,20 +158,17 @@ export function ManagingUnits() {
     setFiscalSearchTerm('');
     setIsFormOpen(false);
     setEditingUnit(null);
+    
+    // refetchData(); // Chamar refetch para atualizar o estado global
   };
 
   const handleProgramSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
+    // NOTE: Em uma implementação real, esta função faria um INSERT/UPDATE no Supabase.
+    
     if (editingProgram) {
       // Editar programa existente
-      setAllPrograms(prev => prev.map(program => 
-        program.id === editingProgram.id 
-          ? { ...program, ...programFormData }
-          : program
-      ));
-      
-      // Atualizar também na unidade
       setUnits(prev => prev.map(unit => ({
         ...unit,
         programs: unit.programs.map(program => 
@@ -170,10 +181,9 @@ export function ManagingUnits() {
       // Criar novo programa
       const newProgram: Program = {
         id: Date.now().toString(),
-        ...programFormData
+        name: programFormData.name,
+        unitId: programFormData.unitId
       };
-      
-      setAllPrograms(prev => [...prev, newProgram]);
       
       // Adicionar à unidade correspondente
       setUnits(prev => prev.map(unit => 
@@ -188,6 +198,7 @@ export function ManagingUnits() {
     setIsProgramFormOpen(false);
     setEditingProgram(null);
     setSelectedUnitForProgram('');
+    // refetchData(); // Chamar refetch para atualizar o estado global
   };
 
   const handleEdit = (unit: ManagingUnit) => {
@@ -196,6 +207,9 @@ export function ManagingUnits() {
     if (unitFiscal) {
       setSelectedFiscal(unitFiscal);
       setFiscalSearchTerm(unitFiscal.name);
+    } else {
+      setSelectedFiscal(null);
+      setFiscalSearchTerm('');
     }
     setFormData({
       name: unit.name,
@@ -217,11 +231,12 @@ export function ManagingUnits() {
 
   const handleDeleteProgram = (programId: string) => {
     if (confirm('Tem certeza que deseja excluir este programa?')) {
-      setAllPrograms(prev => prev.filter(program => program.id !== programId));
+      // NOTE: Em uma implementação real, esta função faria um DELETE no Supabase.
       setUnits(prev => prev.map(unit => ({
         ...unit,
         programs: unit.programs.filter(program => program.id !== programId)
       })));
+      // refetchData(); // Chamar refetch para atualizar o estado global
     }
   };
 
@@ -233,7 +248,9 @@ export function ManagingUnits() {
 
   const handleDelete = (id: string) => {
     if (confirm('Tem certeza que deseja excluir esta unidade gestora?')) {
+      // NOTE: Em uma implementação real, esta função faria um DELETE no Supabase.
       setUnits(prev => prev.filter(unit => unit.id !== id));
+      // refetchData(); // Chamar refetch para atualizar o estado global
     }
   };
 

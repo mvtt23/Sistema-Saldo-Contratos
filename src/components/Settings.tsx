@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { managingUnits } from "@/data/mockData";
+import { ManagingUnit } from "@/types/contract";
 import { Settings as SettingsIcon, Upload, User, Building2, Save, Plus, Edit, Trash2 } from "lucide-react";
 import { UserManagement } from "./UserManagement";
 
@@ -17,7 +17,11 @@ interface Fiscal {
   unit: string;
 }
 
-export function Settings() {
+interface SettingsProps {
+  managingUnits: ManagingUnit[];
+}
+
+export function Settings({ managingUnits }: SettingsProps) {
   const [municipalityName, setMunicipalityName] = useState('Prefeitura Municipal de São Paulo');
   const [slogan, setSlogan] = useState('Cidade que não para');
   const [address, setAddress] = useState('Viaduto do Chá, 15 - Centro - São Paulo/SP - CEP: 01002-020');
