@@ -43,15 +43,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signIn = async (username: string, password: string) => {
     // Lógica de login real (Supabase)
     try {
-      // Nota: Em um ambiente de produção, a senha NUNCA deve ser armazenada em texto simples.
-      // O Supabase Auth deve ser usado para hashing de senha, mas aqui estamos simulando
-      // a busca na tabela 'users' conforme a estrutura do seu banco de dados mockado.
+      // *** DIAGNÓSTICO: Removendo a verificação de senha temporariamente ***
       const { data: userData, error: userError } = await supabase
         .from('users')
         .select('id, username, role, is_active')
         .eq('username', username)
-        .eq('password', password)
-        .maybeSingle();
+        .maybeSingle(); // Removido .eq('password', password)
 
       if (userError) {
         console.error("Supabase Error during sign-in query:", userError);
@@ -62,6 +59,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.log("Login failed: No user data returned (check RLS or credentials).");
         return { error: { message: 'Credenciais inválidas. Verifique seu usuário e senha.' } };
       }
+      
+      // *** DIAGNÓSTICO: Verificando a senha manualmente no frontend ***
+      if (userData.password !== password) {
+          // Se a consulta acima retornar o usuário, mas a senha não bater,
+          // isso significa que a coluna 'password' não está sendo retornada.
+          // Vamos refazer a consulta para incluir a senha para este teste.
+          const { data: fullUserData } = await supabase
+            .from('users')
+            .select('id, username, role, is_active, password')
+            .eq('username', username)
+            .maybeSingle();
+            
+          if (fullUserData && fullUserData.password === password) {
+              // Se a senha bater, continuamos.
+              // Nota: A coluna 'password' não deve ser retornada em produção.
+              userData.password = fullUserData.password;
+          } else {
+              console.log("Login failed: Password mismatch.");
+              return { error: { message: 'Credenciais inválidas. Verifique seu usuário e senha.' } };
+          }
+      }
+
 
       if (!userData.is_active) {
         return { error: { message: 'Usuário inativo. Entre em contato com o administrador.' } };
