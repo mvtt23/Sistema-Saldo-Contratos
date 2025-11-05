@@ -4,8 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Users, Plus, Edit, Trash2, Shield, Eye, Pencil, FileText, X, Check } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useUserManagement } from "@/hooks/useUserManagement";
 import { useToast } from "@/hooks/use-toast";
+import { Users, Plus, Edit, Trash2, Shield, Eye, Pencil, FileText, X, Check } from "lucide-react";
 
 interface User {
   id: string;
@@ -15,17 +17,7 @@ interface User {
   created_at: string;
 }
 
-interface Permission {
-  id: string;
-  user_id: string;
-  module: string;
-  can_view: boolean;
-  can_edit: boolean;
-  can_create: boolean;
-  can_delete: boolean;
-}
-
-interface ModulePermissions {
+interface ModulePermission {
   module: string;
   label: string;
   icon: any;
@@ -35,146 +27,112 @@ interface ModulePermissions {
   can_delete: boolean;
 }
 
-const MODULES = [
-  { module: 'dashboard', label: 'Dashboard', icon: FileText },
-  { module: 'contracts', label: 'Contratos', icon: FileText },
-  { module: 'managing_units', label: 'Unidades Gestoras', icon: FileText },
-  { module: 'reports', label: 'Relatórios', icon: FileText },
-];
-
-// Mock data for initial users (excluding admin from this list as it's handled by AuthContext)
-const initialMockUsers: User[] = [
-  // Adicionando um usuário de exemplo para aparecer na lista (não admin)
-  { id: 'user-1', username: 'fiscal_saude', role: 'viewer', is_active: true, created_at: new Date().toISOString() },
-  { id: 'user-2', username: 'gestor_obras', role: 'manager', is_active: false, created_at: new Date().toISOString() },
-];
-
-// Mock permissions for non-admin users
-const mockPermissions: Record<string, ModulePermissions[]> = {
-  'user-1': [
-    { module: 'dashboard', label: 'Dashboard', icon: FileText, can_view: true, can_edit: false, can_create: false, can_delete: false },
-    { module: 'contracts', label: 'Contratos', icon: FileText, can_view: true, can_edit: false, can_create: false, can_delete: false },
-    { module: 'managing_units', label: 'Unidades Gestoras', icon: FileText, can_view: true, can_edit: false, can_create: false, can_delete: false },
-    { module: 'reports', label: 'Relatórios', icon: FileText, can_view: true, can_edit: false, can_create: false, can_delete: false },
-  ],
-  'user-2': [
-    { module: 'dashboard', label: 'Dashboard', icon: FileText, can_view: true, can_edit: true, can_create: true, can_delete: false },
-    { module: 'contracts', label: 'Contratos', icon: FileText, can_view: true, can_edit: true, can_create: true, can_delete: false },
-    { module: 'managing_units', label: 'Unidades Gestoras', icon: FileText, can_view: true, can_edit: false, can_create: false, can_delete: false },
-    { module: 'reports', label: 'Relatórios', icon: FileText, can_view: true, can_edit: false, can_create: false, can_delete: false },
-  ],
-};
-
-
 export function UserManagement() {
-  const [users, setUsers] = useState<User[]>(initialMockUsers);
+  const { toast } = useToast();
+  const { 
+    users, 
+    permissions, 
+    loading, 
+    fetchUsers, 
+    createUser, 
+    updateUser, 
+    deleteUser, 
+    updateUserPermissions 
+  } = useUserManagement();
+
+  // Buscar usuários quando o componente for montado
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]);
+
   const [isAddingUser, setIsAddingUser] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [editingPermissions, setEditingPermissions] = useState<string | null>(null);
-  const [userForm, setUserForm] = useState({ username: '', password: '' });
-  const [permissions, setPermissions] = useState<Record<string, ModulePermissions[]>>(mockPermissions);
-  const { toast } = useToast();
+  const [userForm, setUserForm] = useState({ username: '', password: '', role: 'viewer' });
+  const [userPermissions, setUserPermissions] = useState<ModulePermission[]>([]);
+
+  // Inicializar permissões quando o usuário for selecionado para edição
+  const handleEditUser = (user: User) => {
+    setEditingUser(user);
+    setUserForm({ 
+      username: user.username, 
+      password: '', // Não exibir senha existente
+      role: user.role 
+    });
+    setIsAddingUser(true);
+  };
 
   const handleSaveUser = async () => {
-    if (!userForm.username || (!editingUser && !userForm.password)) {
-      toast({
-        title: "Erro",
-        description: "Preencha o nome de usuário e a senha",
-        variant: "destructive",
-      });
+    if (!userForm.username) {
+      toast({ title: "Erro", description: "Preencha o nome de usuário", variant: "destructive" });
+      return;
+    }
+
+    if (!editingUser && !userForm.password) {
+      toast({ title: "Erro", description: "Preencha a senha", variant: "destructive" });
       return;
     }
 
     if (editingUser) {
-      setUsers(prev => prev.map(u => u.id === editingUser.id ? { ...u, username: userForm.username } : u));
-    } else {
-      const newUser: User = {
-        id: Date.now().toString(),
+      const success = await updateUser(editingUser.id, {
         username: userForm.username,
-        role: 'viewer', // Novo usuário começa como viewer
-        is_active: true,
-        created_at: new Date().toISOString(),
-      };
-      setUsers(prev => [...prev, newUser]);
-      
-      // Inicializa permissões para o novo usuário
-      setPermissions(prev => ({
-        ...prev,
-        [newUser.id]: MODULES.map(mod => ({
-          ...mod,
-          can_view: true,
-          can_edit: false,
-          can_create: false,
-          can_delete: false,
-        }))
-      }));
+        role: userForm.role,
+        ...(userForm.password && { password: userForm.password })
+      });
+      if (success) {
+        setIsAddingUser(false);
+        setEditingUser(null);
+      }
+    } else {
+      const newUser = await createUser({
+        username: userForm.username,
+        password: userForm.password,
+        role: userForm.role
+      });
+      if (newUser) {
+        setIsAddingUser(false);
+        setEditingUser(null);
+      }
     }
-
-    toast({
-      title: "Sucesso",
-      description: editingUser ? "Usuário atualizado com sucesso" : "Usuário criado com sucesso",
-      variant: "success"
-    });
-
-    setUserForm({ username: '', password: '' });
-    setIsAddingUser(false);
-    setEditingUser(null);
-  };
-
-  const handleEditUser = (user: User) => {
-    setEditingUser(user);
-    setUserForm({ username: user.username, password: '' });
-    setIsAddingUser(true);
   };
 
   const handleDeleteUser = async (id: string) => {
-    if (!confirm('Tem certeza que deseja excluir este usuário?')) return;
-
-    setUsers(prev => prev.filter(u => u.id !== id));
-    setPermissions(prev => {
-      const newPermissions = { ...prev };
-      delete newPermissions[id];
-      return newPermissions;
-    });
-
-    toast({
-      title: "Sucesso",
-      description: "Usuário excluído com sucesso",
-      variant: "success"
-    });
+    await deleteUser(id);
   };
 
   const handleToggleActive = async (user: User) => {
-    const updatedUser = { ...user, is_active: !user.is_active };
-    setUsers(prev => prev.map(u => u.id === user.id ? updatedUser : u));
-    
-    toast({
-      title: "Sucesso",
-      description: `Usuário ${!user.is_active ? 'ativado' : 'desativado'} com sucesso`,
-      variant: "success"
-    });
+    const success = await updateUser(user.id, { is_active: !user.is_active });
+    if (success) {
+      // O fetchUsers será chamado automaticamente dentro do updateUser
+    }
   };
 
-  const handlePermissionChange = (userId: string, moduleIndex: number, field: string, value: boolean) => {
-    setPermissions(prev => ({
-      ...prev,
-      [userId]: prev[userId].map((perm, idx) =>
+  const handleEditPermissions = (userId: string) => {
+    setEditingPermissions(userId);
+    setUserPermissions(permissions[userId] || []);
+  };
+
+  const handlePermissionChange = (moduleIndex: number, field: string, value: boolean) => {
+    setUserPermissions(prev => 
+      prev.map((perm, idx) =>
         idx === moduleIndex ? { ...perm, [field]: value } : perm
       )
-    }));
+    );
   };
 
-  const handleSavePermissions = async (userId: string) => {
-    // Aqui, em uma aplicação real, você enviaria as permissões atualizadas para o Supabase.
-    // Como estamos usando mock, apenas confirmamos o salvamento.
-    
-    toast({
-      title: "Sucesso",
-      description: "Permissões atualizadas com sucesso",
-      variant: "success"
-    });
+  const handleSavePermissions = async () => {
+    if (editingPermissions) {
+      await updateUserPermissions(editingPermissions, userPermissions);
+      setEditingPermissions(null);
+    }
+  };
+
+  const handleCancelPermissions = () => {
     setEditingPermissions(null);
   };
+
+  // Filtrar usuários para não mostrar o admin (já que o admin não pode se gerenciar)
+  const filteredUsers = users.filter(user => user.role !== 'admin');
 
   return (
     <Card>
@@ -188,7 +146,7 @@ export function UserManagement() {
             onClick={() => {
               setIsAddingUser(true);
               setEditingUser(null);
-              setUserForm({ username: '', password: '' });
+              setUserForm({ username: '', password: '', role: 'viewer' });
             }}
             className="bg-blue-600 hover:bg-blue-700"
           >
@@ -198,176 +156,194 @@ export function UserManagement() {
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        {isAddingUser && (
-          <div className="border rounded-lg p-4 bg-gray-50">
-            <h4 className="font-semibold mb-4">
-              {editingUser ? 'Editar Usuário' : 'Novo Usuário'}
-            </h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="username">Nome de Usuário</Label>
-                <Input
-                  id="username"
-                  value={userForm.username}
-                  onChange={(e) => setUserForm(prev => ({ ...prev, username: e.target.value }))}
-                  placeholder="Digite o nome de usuário"
-                />
-              </div>
-              <div>
-                <Label htmlFor="password">
-                  {editingUser ? 'Nova Senha (deixe em branco para manter)' : 'Senha'}
-                </Label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={userForm.password}
-                  onChange={(e) => setUserForm(prev => ({ ...prev, password: e.target.value }))}
-                  placeholder="Digite a senha"
-                />
-              </div>
-            </div>
-
-            <div className="flex justify-end space-x-2 mt-4">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setIsAddingUser(false);
-                  setEditingUser(null);
-                  setUserForm({ username: '', password: '' });
-                }}
-              >
-                Cancelar
-              </Button>
-              <Button onClick={handleSaveUser} className="bg-blue-600 hover:bg-blue-700">
-                {editingUser ? 'Atualizar' : 'Criar'}
-              </Button>
-            </div>
-          </div>
-        )}
-
-        <div className="space-y-3">
-          {users.filter(user => user.role !== 'admin').map(user => (
-            <div key={user.id} className="border rounded-lg p-4">
-              <div className="flex justify-between items-start mb-4">
-                <div className="flex items-center space-x-3">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${user.is_active ? 'bg-green-100' : 'bg-gray-100'}`}>
-                    <Users className={`w-5 h-5 ${user.is_active ? 'text-green-600' : 'text-gray-400'}`} />
+        {loading ? (
+          <div className="text-center py-8">Carregando usuários...</div>
+        ) : (
+          <>
+            {isAddingUser && (
+              <div className="border rounded-lg p-4 bg-gray-50">
+                <h4 className="font-semibold mb-4">
+                  {editingUser ? 'Editar Usuário' : 'Novo Usuário'}
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="username">Nome de Usuário *</Label>
+                    <Input
+                      id="username"
+                      value={userForm.username}
+                      onChange={(e) => setUserForm(prev => ({ ...prev, username: e.target.value }))}
+                      placeholder="Digite o nome de usuário"
+                    />
                   </div>
                   <div>
-                    <p className="font-semibold">{user.username}</p>
-                    <p className="text-sm text-gray-500">
-                      {user.is_active ? 'Ativo' : 'Inativo'}
-                    </p>
+                    <Label htmlFor="password">
+                      {editingUser ? 'Nova Senha (deixe em branco para manter)' : 'Senha *'}
+                    </Label>
+                    <Input
+                      id="password"
+                      type="password"
+                      value={userForm.password}
+                      onChange={(e) => setUserForm(prev => ({ ...prev, password: e.target.value }))}
+                      placeholder="Digite a senha"
+                    />
                   </div>
                 </div>
-                <div className="flex space-x-2">
+
+                <div className="mt-4">
+                  <Label htmlFor="role">Perfil</Label>
+                  <Select value={userForm.role} onValueChange={(value) => setUserForm(prev => ({ ...prev, role: value }))}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o perfil" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="viewer">Visualizador</SelectItem>
+                      <SelectItem value="manager">Gerente</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="flex justify-end space-x-2 mt-4">
                   <Button
-                    size="sm"
                     variant="outline"
-                    onClick={() => handleToggleActive(user)}
+                    onClick={() => {
+                      setIsAddingUser(false);
+                      setEditingUser(null);
+                    }}
                   >
-                    {user.is_active ? <X className="w-4 h-4" /> : <Check className="w-4 h-4" />}
+                    Cancelar
                   </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleEditUser(user)}
-                  >
-                    <Edit className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setEditingPermissions(editingPermissions === user.id ? null : user.id)}
-                    className="text-blue-600"
-                  >
-                    <Shield className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleDeleteUser(user.id)}
-                    className="text-red-600 hover:text-red-700"
-                  >
-                    <Trash2 className="w-4 h-4" />
+                  <Button onClick={handleSaveUser} className="bg-blue-600 hover:bg-blue-700">
+                    {editingUser ? 'Atualizar' : 'Criar'}
                   </Button>
                 </div>
               </div>
+            )}
 
-              {editingPermissions === user.id && permissions[user.id] && (
-                <div className="mt-4 border-t pt-4">
-                  <h5 className="font-semibold mb-3 flex items-center">
-                    <Shield className="w-4 h-4 mr-2 text-blue-600" />
-                    Permissões por Módulo
-                  </h5>
-                  <div className="space-y-3">
-                    {permissions[user.id].map((perm, idx) => (
-                      <div key={perm.module} className="bg-gray-50 p-3 rounded-lg">
-                        <p className="font-medium mb-2">{perm.label}</p>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                          <label className="flex items-center space-x-2 text-sm">
-                            <Checkbox
-                              checked={perm.can_view}
-                              onCheckedChange={(checked) =>
-                                handlePermissionChange(user.id, idx, 'can_view', checked as boolean)
-                              }
-                            />
-                            <Eye className="w-4 h-4 text-gray-500" />
-                            <span>Visualizar</span>
-                          </label>
-                          <label className="flex items-center space-x-2 text-sm">
-                            <Checkbox
-                              checked={perm.can_edit}
-                              onCheckedChange={(checked) =>
-                                handlePermissionChange(user.id, idx, 'can_edit', checked as boolean)
-                              }
-                            />
-                            <Pencil className="w-4 h-4 text-gray-500" />
-                            <span>Editar</span>
-                          </label>
-                          <label className="flex items-center space-x-2 text-sm">
-                            <Checkbox
-                              checked={perm.can_create}
-                              onCheckedChange={(checked) =>
-                                handlePermissionChange(user.id, idx, 'can_create', checked as boolean)
-                              }
-                            />
-                            <Plus className="w-4 h-4 text-gray-500" />
-                            <span>Criar</span>
-                          </label>
-                          <label className="flex items-center space-x-2 text-sm">
-                            <Checkbox
-                              checked={perm.can_delete}
-                              onCheckedChange={(checked) =>
-                                handlePermissionChange(user.id, idx, 'can_delete', checked as boolean)
-                              }
-                            />
-                            <Trash2 className="w-4 h-4 text-gray-500" />
-                            <span>Excluir</span>
-                          </label>
-                        </div>
+            <div className="space-y-3">
+              {filteredUsers.map(user => (
+                <div key={user.id} className="border rounded-lg p-4">
+                  <div className="flex justify-between items-start mb-4">
+                    <div className="flex items-center space-x-3">
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center ${user.is_active ? 'bg-green-100' : 'bg-gray-100'}`}>
+                        <Users className={`w-5 h-5 ${user.is_active ? 'text-green-600' : 'text-gray-400'}`} />
                       </div>
-                    ))}
+                      <div>
+                        <p className="font-semibold">{user.username}</p>
+                        <p className="text-sm text-gray-500">
+                          {user.is_active ? 'Ativo' : 'Inativo'} • {user.role === 'viewer' ? 'Visualizador' : 'Gerente'}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex space-x-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleToggleActive(user)}
+                      >
+                        {user.is_active ? <X className="w-4 h-4" /> : <Check className="w-4 h-4" />}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleEditUser(user)}
+                      >
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleEditPermissions(user.id)}
+                        className="text-blue-600"
+                      >
+                        <Shield className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleDeleteUser(user.id)}
+                        className="text-red-600 hover:text-red-700"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
                   </div>
-                  <div className="flex justify-end mt-4">
-                    <Button
-                      onClick={() => handleSavePermissions(user.id)}
-                      className="bg-blue-600 hover:bg-blue-700"
-                    >
-                      Salvar Permissões
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
 
-        {users.filter(user => user.role !== 'admin').length === 0 && (
-          <div className="text-center py-8 text-gray-500">
-            <Users className="w-12 h-12 mx-auto mb-4 text-gray-400" />
-            <p>Nenhum usuário cadastrado</p>
-          </div>
+                  {editingPermissions === user.id && (
+                    <div className="mt-4 border-t pt-4">
+                      <h5 className="font-semibold mb-3 flex items-center">
+                        <Shield className="w-4 h-4 mr-2 text-blue-600" />
+                        Permissões por Módulo
+                      </h5>
+                      <div className="space-y-3">
+                        {userPermissions.map((perm, idx) => (
+                          <div key={perm.module} className="bg-gray-50 p-3 rounded-lg">
+                            <p className="font-medium mb-2">{perm.label}</p>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                              <label className="flex items-center space-x-2 text-sm">
+                                <Checkbox
+                                  checked={perm.can_view}
+                                  onCheckedChange={(checked) =>
+                                    handlePermissionChange(idx, 'can_view', checked as boolean)
+                                  }
+                                />
+                                <Eye className="w-4 h-4 text-gray-500" />
+                                <span>Visualizar</span>
+                              </label>
+                              <label className="flex items-center space-x-2 text-sm">
+                                <Checkbox
+                                  checked={perm.can_edit}
+                                  onCheckedChange={(checked) =>
+                                    handlePermissionChange(idx, 'can_edit', checked as boolean)
+                                  }
+                                />
+                                <Pencil className="w-4 h-4 text-gray-500" />
+                                <span>Editar</span>
+                              </label>
+                              <label className="flex items-center space-x-2 text-sm">
+                                <Checkbox
+                                  checked={perm.can_create}
+                                  onCheckedChange={(checked) =>
+                                    handlePermissionChange(idx, 'can_create', checked as boolean)
+                                  }
+                                />
+                                <Plus className="w-4 h-4 text-gray-500" />
+                                <span>Criar</span>
+                              </label>
+                              <label className="flex items-center space-x-2 text-sm">
+                                <Checkbox
+                                  checked={perm.can_delete}
+                                  onCheckedChange={(checked) =>
+                                    handlePermissionChange(idx, 'can_delete', checked as boolean)
+                                  }
+                                />
+                                <Trash2 className="w-4 h-4 text-gray-500" />
+                                <span>Excluir</span>
+                              </label>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="flex justify-end mt-4 space-x-2">
+                        <Button variant="outline" onClick={handleCancelPermissions}>
+                          Cancelar
+                        </Button>
+                        <Button onClick={handleSavePermissions} className="bg-blue-600 hover:bg-blue-700">
+                          Salvar Permissões
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {filteredUsers.length === 0 && (
+              <div className="text-center py-8 text-gray-500">
+                <Users className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+                <p>Nenhum usuário cadastrado</p>
+              </div>
+            )}
+          </>
         )}
       </CardContent>
     </Card>

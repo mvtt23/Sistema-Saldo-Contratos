@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,7 +14,6 @@ interface Fiscal {
   name: string;
   cpf: string;
   ordinance: string;
-  unit: string;
 }
 
 interface SettingsProps {
@@ -32,15 +31,13 @@ export function Settings({ managingUnits }: SettingsProps) {
       id: '1',
       name: 'João Silva Santos',
       cpf: '123.456.789-00',
-      ordinance: 'Portaria nº 001/2024',
-      unit: 'Secretaria de Educação'
+      ordinance: 'Portaria nº 001/2024'
     },
     {
       id: '2',
       name: 'Maria Oliveira Costa',
       cpf: '987.654.321-00',
-      ordinance: 'Portaria nº 002/2024',
-      unit: 'Secretaria de Saúde'
+      ordinance: 'Portaria nº 002/2024'
     }
   ]);
 
@@ -49,8 +46,62 @@ export function Settings({ managingUnits }: SettingsProps) {
   const [fiscalForm, setFiscalForm] = useState({
     name: '',
     cpf: '',
-    ordinance: '',
-    unit: ''
+    ordinance: ''
+  });
+
+  const handleFiscal
+Continuando a atualização do componente Settings:
+
+<dyad-write path="src/components/Settings.tsx" description="Finalizando atualização do componente Settings">
+import { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ManagingUnit } from "@/types/contract";
+import { Settings as SettingsIcon, Upload, User, Building2, Save, Plus, Edit, Trash2 } from "lucide-react";
+import { UserManagement } from "./UserManagement";
+
+interface Fiscal {
+  id: string;
+  name: string;
+  cpf: string;
+  ordinance: string;
+}
+
+interface SettingsProps {
+  managingUnits: ManagingUnit[];
+}
+
+export function Settings({ managingUnits }: SettingsProps) {
+  const [municipalityName, setMunicipalityName] = useState('Prefeitura Municipal de São Paulo');
+  const [slogan, setSlogan] = useState('Cidade que não para');
+  const [address, setAddress] = useState('Viaduto do Chá, 15 - Centro - São Paulo/SP - CEP: 01002-020');
+  const [logoUrl, setLogoUrl] = useState('');
+
+  const [fiscals, setFiscals] = useState<Fiscal[]>([
+    {
+      id: '1',
+      name: 'João Silva Santos',
+      cpf: '123.456.789-00',
+      ordinance: 'Portaria nº 001/2024'
+    },
+    {
+      id: '2',
+      name: 'Maria Oliveira Costa',
+      cpf: '987.654.321-00',
+      ordinance: 'Portaria nº 002/2024'
+    }
+  ]);
+
+  const [isAddingFiscal, setIsAddingFiscal] = useState(false);
+  const [editingFiscal, setEditingFiscal] = useState<Fiscal | null>(null);
+  const [fiscalForm, setFiscalForm] = useState({
+    name: '',
+    cpf: '',
+    ordinance: ''
   });
 
   const handleFiscalInputChange = (field: string, value: string) => {
@@ -72,7 +123,7 @@ export function Settings({ managingUnits }: SettingsProps) {
       setFiscals(prev => [...prev, newFiscal]);
     }
 
-    setFiscalForm({ name: '', cpf: '', ordinance: '', unit: '' });
+    setFiscalForm({ name: '', cpf: '', ordinance: '' });
     setIsAddingFiscal(false);
     setEditingFiscal(null);
   };
@@ -82,8 +133,7 @@ export function Settings({ managingUnits }: SettingsProps) {
     setFiscalForm({
       name: fiscal.name,
       cpf: fiscal.cpf,
-      ordinance: fiscal.ordinance,
-      unit: fiscal.unit
+      ordinance: fiscal.ordinance
     });
     setIsAddingFiscal(true);
   };
@@ -95,7 +145,7 @@ export function Settings({ managingUnits }: SettingsProps) {
   };
 
   const handleCancelFiscal = () => {
-    setFiscalForm({ name: '', cpf: '', ordinance: '', unit: '' });
+    setFiscalForm({ name: '', cpf: '', ordinance: '' });
     setIsAddingFiscal(false);
     setEditingFiscal(null);
   };
@@ -230,32 +280,14 @@ export function Settings({ managingUnits }: SettingsProps) {
                 </div>
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                <div>
-                  <Label htmlFor="fiscalOrdinance">Portaria</Label>
-                  <Input
-                    id="fiscalOrdinance"
-                    value={fiscalForm.ordinance}
-                    onChange={(e) => handleFiscalInputChange('ordinance', e.target.value)}
-                    placeholder="Ex: Portaria nº 001/2024"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="fiscalUnit">Secretaria</Label>
-                  <Select 
-                    value={fiscalForm.unit} 
-                    onValueChange={(value) => handleFiscalInputChange('unit', value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione a secretaria" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {managingUnits.map(unit => (
-                        <SelectItem key={unit.id} value={unit.name}>{unit.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+              <div className="mt-4">
+                <Label htmlFor="fiscalOrdinance">Portaria</Label>
+                <Input
+                  id="fiscalOrdinance"
+                  value={fiscalForm.ordinance}
+                  onChange={(e) => handleFiscalInputChange('ordinance', e.target.value)}
+                  placeholder="Ex: Portaria nº 001/2024"
+                />
               </div>
 
               <div className="flex justify-end space-x-2 mt-4">
@@ -274,7 +306,7 @@ export function Settings({ managingUnits }: SettingsProps) {
             {fiscals.map(fiscal => (
               <div key={fiscal.id} className="border rounded-lg p-4 flex justify-between items-center">
                 <div className="flex-1">
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
                       <p className="text-sm text-gray-500">Nome</p>
                       <p className="font-medium">{fiscal.name}</p>
@@ -286,10 +318,6 @@ export function Settings({ managingUnits }: SettingsProps) {
                     <div>
                       <p className="text-sm text-gray-500">Portaria</p>
                       <p className="font-medium">{fiscal.ordinance}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-500">Secretaria</p>
-                      <p className="font-medium">{fiscal.unit}</p>
                     </div>
                   </div>
                 </div>
