@@ -43,7 +43,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signIn = async (username: string, password: string) => {
     try {
       // Etapa 1: Buscar o usuário pelo username, solicitando a senha para verificação.
-      // Nota: A RLS deve permitir que o usuário 'anon' selecione esta linha.
+      // A RLS deve permitir que o usuário 'anon' selecione esta linha.
       const { data: userData, error: userError } = await supabase
         .from('users')
         .select('id, username, role, is_active, password') // Solicitando a coluna 'password'
