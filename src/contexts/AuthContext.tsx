@@ -35,46 +35,59 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
-      setUser(JSON.parse(storedUser));
+      try {
+        setUser(JSON.parse(storedUser));
+      } catch (error) {
+        console.error('Error parsing stored user:', error);
+        localStorage.removeItem('user');
+      }
     }
     setLoading(false);
   }, []);
 
   const signIn = async (username: string, password: string) => {
     try {
-      // Etapa 1: Buscar o usuário pelo username, solicitando a senha para verificação.
-      // A RLS deve permitir que o usuário 'anon' selecione esta linha.
+      console.log('Attempting login for user:', username);
+      
+      // Buscar o usuário pelo username
       const { data: userData, error: userError } = await supabase
         .from('users')
-        .select('id, username, role, is_active, password') // Solicitando a coluna 'password'
+        .select('id, username, role, is_active, password')
         .eq('username', username)
         .maybeSingle();
 
       if (userError) {
-        console.error("Supabase Error during sign-in query:", userError);
-        return { error: { message: `Erro do Supabase: ${userError.message}` } };
+        console.error('Supabase error during user query:', userError);
+        return { error: { message: `Erro ao buscar usuário: ${userError.message}` } };
       }
 
       if (!userData) {
-        console.log("Login failed: User not found.");
-        return { error: { message: 'Credenciais inválidas. Verifique seu usuário e senha.' } };
-      }
-      
-      // Etapa 2: Verificar a senha no frontend (necessário para login customizado sem auth.users)
-      if (userData.password !== password) {
-          console.log("Login failed: Password mismatch.");
-          return { error: { message: 'Credenciais inválidas. Verifique seu usuário e senha.' } };
+        console.log('User not found:', username);
+        return { error: { message: 'Usuário não encontrado. Verifique o nome de usuário.' } };
       }
 
+      // Verificar se o usuário está ativo
       if (!userData.is_active) {
+        console.log('User is inactive:', username);
         return { error: { message: 'Usuário inativo. Entre em contato com o administrador.' } };
       }
 
+      // Verificar a senha (em um ambiente real, use hashing)
+      if (userData.password !== password) {
+        console.log('Password mismatch for user:', username);
+        return { error: { message: 'Senha incorreta. Tente novamente.' } };
+      }
+
       // Buscar permissões do usuário
-      const { data: permissionsData } = await supabase
+      const { data: permissionsData, error: permissionsError } = await supabase
         .from('user_permissions')
         .select('module, can_view, can_edit, can_create, can_delete')
         .eq('user_id', userData.id);
+
+      if (permissionsError) {
+        console.error('Error fetching permissions:', permissionsError);
+        return { error: { message: 'Erro ao carregar permissões do usuário.' } };
+      }
 
       const userWithPermissions: User = {
         id: userData.id,
@@ -84,16 +97,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         permissions: permissionsData || [],
       };
 
+      console.log('Login successful for user:', username);
       setUser(userWithPermissions);
       localStorage.setItem('user', JSON.stringify(userWithPermissions));
       return { error: null };
     } catch (error) {
-      console.error("Supabase login error (Catch block):", error);
-      return { error: { message: 'Erro ao tentar conectar ao servidor.' } };
+      console.error('Unexpected error during login:', error);
+      return { error: { message: 'Ocorreu um erro inesperado. Tente novamente mais tarde.' } };
     }
   };
 
   const signOut = async () => {
+    console.log('Signing out user:', user?.username);
     setUser(null);
     localStorage.removeItem('user');
   };

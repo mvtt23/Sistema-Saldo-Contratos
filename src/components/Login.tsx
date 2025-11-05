@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, Loader2 } from 'lucide-react';
 
 export function Login() {
   const [username, setUsername] = useState('');
@@ -18,13 +18,17 @@ export function Login() {
     setError('');
     setLoading(true);
 
-    const { error } = await signIn(username, password);
+    try {
+      const { error } = await signIn(username, password);
 
-    if (error) {
-      setError('Credenciais inválidas. Verifique seu usuário e senha.');
+      if (error) {
+        setError(error.message || 'Credenciais inválidas. Verifique seu usuário e senha.');
+      }
+    } catch (err) {
+      setError('Ocorreu um erro inesperado. Tente novamente.');
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   return (
@@ -62,6 +66,7 @@ export function Login() {
                   required
                   disabled={loading}
                   className="h-11"
+                  autoComplete="username"
                 />
               </div>
 
@@ -76,6 +81,7 @@ export function Login() {
                   required
                   disabled={loading}
                   className="h-11"
+                  autoComplete="current-password"
                 />
               </div>
 
@@ -91,11 +97,26 @@ export function Login() {
                 className="w-full h-11 text-base font-medium bg-slate-900 hover:bg-slate-800 transition-colors"
                 disabled={loading}
               >
-                {loading ? 'Entrando...' : 'Entrar'}
+                {loading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Entrando...
+                  </>
+                ) : (
+                  'Entrar'
+                )}
               </Button>
             </form>
           </CardContent>
         </Card>
+
+        <div className="mt-6 text-center text-sm text-slate-600">
+          <p>Dados de teste:</p>
+          <p className="font-mono bg-slate-100 p-2 rounded mt-1">
+            Usuário: admin<br />
+            Senha: admin123
+          </p>
+        </div>
 
         <p className="text-center text-sm text-slate-600 mt-6">
           Sistema de Gestão de Contratos © 2025
