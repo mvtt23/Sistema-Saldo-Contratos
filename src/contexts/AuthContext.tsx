@@ -42,13 +42,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signIn = async (username: string, password: string) => {
     try {
-      // A consulta deve incluir a senha para que o Supabase encontre a linha exata.
-      // A RLS 'Allow anon select for login' deve permitir esta consulta.
+      // Etapa 1: Buscar o usuário pelo username, solicitando a senha para verificação.
+      // Nota: A RLS deve permitir que o usuário 'anon' selecione esta linha.
       const { data: userData, error: userError } = await supabase
         .from('users')
-        .select('id, username, role, is_active')
+        .select('id, username, role, is_active, password') // Solicitando a coluna 'password'
         .eq('username', username)
-        .eq('password', password) // Incluindo a senha na query
         .maybeSingle();
 
       if (userError) {
@@ -57,9 +56,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (!userData) {
-        // Se não encontrar dados, significa que username/password não bateram ou RLS bloqueou.
-        console.log("Login failed: No user data returned (credentials mismatch or RLS block).");
+        console.log("Login failed: User not found.");
         return { error: { message: 'Credenciais inválidas. Verifique seu usuário e senha.' } };
+      }
+      
+      // Etapa 2: Verificar a senha no frontend (necessário para login customizado sem auth.users)
+      if (userData.password !== password) {
+          console.log("Login failed: Password mismatch.");
+          return { error: { message: 'Credenciais inválidas. Verifique seu usuário e senha.' } };
       }
 
       if (!userData.is_active) {
