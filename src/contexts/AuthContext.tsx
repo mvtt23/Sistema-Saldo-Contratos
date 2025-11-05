@@ -49,6 +49,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       console.log('Attempting login for user:', username);
       
+      // Verificar se o Supabase está configurado corretamente
+      if (!supabase) {
+        console.error('Supabase client not initialized');
+        return { error: { message: 'Sistema de autenticação não configurado. Por favor, contate o administrador.' } };
+      }
+      
       // Buscar o usuário pelo username
       const { data: userData, error: userError } = await supabase
         .from('users')
