@@ -97,7 +97,8 @@ export function useUserManagement() {
       setPermissions(permissionsByUser);
     } catch (error) {
       console.error('Error in fetchUsers:', error);
-      toast({ title: "Erro", description: "Falha ao carregar usuários.", variant: "destructive" });
+      const errorMessage = error instanceof Error ? error.message : 'Falha ao carregar usuários.';
+      toast({ title: "Erro", description: errorMessage, variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -122,7 +123,8 @@ export function useUserManagement() {
 
       if (userError) {
         console.error('Error creating user:', userError);
-        throw userError;
+        const errorMessage = userError.message || 'Erro ao criar usuário.';
+        throw new Error(errorMessage);
       }
 
       console.log('User created successfully:', newUser);
@@ -145,12 +147,13 @@ export function useUserManagement() {
 
       if (permissionsError) {
         console.error('Error creating permissions:', permissionsError);
+        const errorMessage = permissionsError.message || 'Erro ao criar permissões.';
         // Se falhar ao criar permissões, exclua o usuário para manter consistência
         await supabase
           .from('users')
           .delete()
           .eq('id', newUser.id);
-        throw permissionsError;
+        throw new Error(errorMessage);
       }
 
       console.log('Permissions created successfully');
@@ -159,7 +162,8 @@ export function useUserManagement() {
       return newUser;
     } catch (error) {
       console.error('Error in createUser:', error);
-      toast({ title: "Erro", description: `Falha ao criar usuário: ${error}`, variant: "destructive" });
+      const errorMessage = error instanceof Error ? error.message : 'Falha ao criar usuário.';
+      toast({ title: "Erro", description: errorMessage, variant: "destructive" });
       return null;
     }
   }, [fetchUsers, toast]);
@@ -175,14 +179,18 @@ export function useUserManagement() {
         })
         .eq('id', userId);
 
-      if (error) throw error;
+      if (error) {
+        const errorMessage = error.message || 'Erro ao atualizar usuário.';
+        throw new Error(errorMessage);
+      }
 
       await fetchUsers(); // Recarregar a lista
       toast({ title: "Sucesso", description: "Usuário atualizado com sucesso.", variant: "success" });
       return true;
     } catch (error) {
       console.error('Error updating user:', error);
-      toast({ title: "Erro", description: "Falha ao atualizar usuário.", variant: "destructive" });
+      const errorMessage = error instanceof Error ? error.message : 'Falha ao atualizar usuário.';
+      toast({ title: "Erro", description: errorMessage, variant: "destructive" });
       return false;
     }
   }, [fetchUsers, toast]);
@@ -204,14 +212,18 @@ export function useUserManagement() {
         .delete()
         .eq('id', userId);
 
-      if (error) throw error;
+      if (error) {
+        const errorMessage = error.message || 'Erro ao excluir usuário.';
+        throw new Error(errorMessage);
+      }
 
       await fetchUsers(); // Recarregar a lista
       toast({ title: "Sucesso", description: "Usuário excluído com sucesso.", variant: "success" });
       return true;
     } catch (error) {
       console.error('Error deleting user:', error);
-      toast({ title: "Erro", description: "Falha ao excluir usuário.", variant: "destructive" });
+      const errorMessage = error instanceof Error ? error.message : 'Falha ao excluir usuário.';
+      toast({ title: "Erro", description: errorMessage, variant: "destructive" });
       return false;
     }
   }, [fetchUsers, toast]);
@@ -240,14 +252,18 @@ export function useUserManagement() {
         .from('user_permissions')
         .insert(permissionsToUpdate);
 
-      if (error) throw error;
+      if (error) {
+        const errorMessage = error.message || 'Erro ao atualizar permissões.';
+        throw new Error(errorMessage);
+      }
 
       await fetchUsers(); // Recarregar a lista
       toast({ title: "Sucesso", description: "Permissões atualizadas com sucesso.", variant: "success" });
       return true;
     } catch (error) {
       console.error('Error updating permissions:', error);
-      toast({ title: "Erro", description: "Falha ao atualizar permissões.", variant: "destructive" });
+      const errorMessage = error instanceof Error ? error.message : 'Falha ao atualizar permissões.';
+      toast({ title: "Erro", description: errorMessage, variant: "destructive" });
       return false;
     }
   }, [fetchUsers, toast]);
