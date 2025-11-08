@@ -100,7 +100,8 @@ export function useUserManagement() {
   // Função para criar um novo usuário
   const createUser = useCallback(async (userData: { username: string; password: string; role: string }) => {
     try {
-      const { data, error } = await supabase
+      // Primeiro, criar o usuário
+      const { data: newUser, error: userError } = await supabase
         .from('users')
         .insert([{
           username: userData.username,
@@ -111,11 +112,14 @@ export function useUserManagement() {
         .select()
         .single();
 
-      if (error) throw error;
+      if (userError) {
+        console.error('Error creating user:', userError);
+        throw userError;
+      }
 
       // Criar permissões padrão para o novo usuário
       const defaultPermissions = MODULES.map(mod => ({
-        user_id: data.id,
+        user_id: newUser.id,
         module: mod.module,
         can_view: true,
         can_edit: false,
@@ -127,11 +131,19 @@ export function useUserManagement() {
         .from('user_permissions')
         .insert(defaultPermissions);
 
-      if (permissionsError) throw permissionsError;
+      if (permissionsError) {
+        console.error('Error creating permissions:', permissionsError);
+        // Se falhar ao criar permissões, exclua o usuário para manter consistência
+        await supabase
+          .from('users')
+          .delete()
+          .eq('id', newUser.id);
+        throw permissionsError;
+      }
 
       await fetchUsers(); // Recarregar a lista
       toast({ title: "Sucesso", description: "Usuário criado com sucesso.", variant: "success" });
-      return data;
+      return newUser;
     } catch (error) {
       console.error('Error creating user:', error);
       toast({ title: "Erro", description: "Falha ao criar usuário.", variant: "destructive" });
