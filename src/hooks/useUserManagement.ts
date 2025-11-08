@@ -55,14 +55,20 @@ export function useUserManagement() {
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (usersError) throw usersError;
+      if (usersError) {
+        console.error('Error fetching users:', usersError);
+        throw usersError;
+      }
 
       // Buscar permissões
       const { data: permissionsData, error: permissionsError } = await supabase
         .from('user_permissions')
         .select('*');
 
-      if (permissionsError) throw permissionsError;
+      if (permissionsError) {
+        console.error('Error fetching permissions:', permissionsError);
+        throw permissionsError;
+      }
 
       // Organizar permissões por usuário
       const permissionsByUser: Record<string, ModulePermission[]> = {};
@@ -90,7 +96,7 @@ export function useUserManagement() {
       setUsers(usersData || []);
       setPermissions(permissionsByUser);
     } catch (error) {
-      console.error('Error fetching users:', error);
+      console.error('Error in fetchUsers:', error);
       toast({ title: "Erro", description: "Falha ao carregar usuários.", variant: "destructive" });
     } finally {
       setLoading(false);
@@ -100,6 +106,8 @@ export function useUserManagement() {
   // Função para criar um novo usuário
   const createUser = useCallback(async (userData: { username: string; password: string; role: string }) => {
     try {
+      console.log('Creating user with data:', userData);
+      
       // Primeiro, criar o usuário
       const { data: newUser, error: userError } = await supabase
         .from('users')
@@ -117,6 +125,8 @@ export function useUserManagement() {
         throw userError;
       }
 
+      console.log('User created successfully:', newUser);
+
       // Criar permissões padrão para o novo usuário
       const defaultPermissions = MODULES.map(mod => ({
         user_id: newUser.id,
@@ -126,6 +136,8 @@ export function useUserManagement() {
         can_create: false,
         can_delete: false
       }));
+
+      console.log('Creating default permissions:', defaultPermissions);
 
       const { error: permissionsError } = await supabase
         .from('user_permissions')
@@ -141,12 +153,13 @@ export function useUserManagement() {
         throw permissionsError;
       }
 
+      console.log('Permissions created successfully');
       await fetchUsers(); // Recarregar a lista
       toast({ title: "Sucesso", description: "Usuário criado com sucesso.", variant: "success" });
       return newUser;
     } catch (error) {
-      console.error('Error creating user:', error);
-      toast({ title: "Erro", description: "Falha ao criar usuário.", variant: "destructive" });
+      console.error('Error in createUser:', error);
+      toast({ title: "Erro", description: `Falha ao criar usuário: ${error}`, variant: "destructive" });
       return null;
     }
   }, [fetchUsers, toast]);
