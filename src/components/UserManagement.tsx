@@ -27,6 +27,13 @@ interface ModulePermission {
   can_delete: boolean;
 }
 
+const MODULES = [
+  { module: 'dashboard', label: 'Dashboard', icon: FileText },
+  { module: 'contracts', label: 'Contratos', icon: FileText },
+  { module: 'managing_units', label: 'Unidades Gestoras', icon: FileText },
+  { module: 'reports', label: 'Relatórios', icon: FileText },
+];
+
 export function UserManagement() {
   const { toast } = useToast();
   const { 
