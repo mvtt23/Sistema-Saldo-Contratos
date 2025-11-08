@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/hooks/use-toast';
+import { FileText } from 'lucide-react';
 
 interface User {
   id: string;
@@ -32,10 +33,10 @@ interface ModulePermission {
 }
 
 const MODULES = [
-  { module: 'dashboard', label: 'Dashboard', icon: require('lucide-react').FileText },
-  { module: 'contracts', label: 'Contratos', icon: require('lucide-react').FileText },
-  { module: 'managing_units', label: 'Unidades Gestoras', icon: require('lucide-react').FileText },
-  { module: 'reports', label: 'Relatórios', icon: require('lucide-react').FileText },
+  { module: 'dashboard', label: 'Dashboard', icon: FileText },
+  { module: 'contracts', label: 'Contratos', icon: FileText },
+  { module: 'managing_units', label: 'Unidades Gestoras', icon: FileText },
+  { module: 'reports', label: 'Relatórios', icon: FileText },
 ];
 
 export function useUserManagement() {
