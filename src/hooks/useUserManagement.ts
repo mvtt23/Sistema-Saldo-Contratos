@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/contexts/AuthContext'; // Importar useAuth
+import { useAuth } from '@/contexts/AuthContext';
 import { FileText, Building2, LayoutDashboard, FileBarChart } from 'lucide-react';
 
 interface User {
@@ -38,15 +38,50 @@ const MODULES = [
   { module: 'contracts', label: 'Contratos', icon: FileText },
   { module: 'managing-units', label: 'Unidades Gestoras', icon: Building2 },
   { module: 'reports', label: 'Relatórios', icon: FileBarChart },
-  { module: 'settings', label: 'Configurações', icon: FileText }, // Adicionado settings
+  { module: 'settings', label: 'Configurações', icon: FileText },
 ];
+
+// Função para obter permissões padrão baseadas no perfil
+const getDefaultPermissions = (role: string): ModulePermission[] => {
+  if (role === 'viewer') {
+    return MODULES.map(mod => ({
+      module: mod.module,
+      label: mod.label,
+      icon: mod.icon,
+      can_view: mod.module !== 'settings',
+      can_edit: false,
+      can_create: false,
+      can_delete: false
+    }));
+  } else if (role === 'manager') {
+    return MODULES.map(mod => ({
+      module: mod.module,
+      label: mod.label,
+      icon: mod.icon,
+      can_view: true,
+      can_edit: mod.module !== 'overview' && mod.module !== 'reports',
+      can_create: mod.module === 'contracts' || mod.module === 'managing-units' || mod.module === 'reports',
+      can_delete: mod.module === 'contracts' || mod.module === 'managing-units'
+    }));
+  }
+  // Default para outros perfis (como admin)
+  return MODULES.map(mod => ({
+    module: mod.module,
+    label: mod.label,
+    icon: mod.icon,
+    can_view: true,
+    can_edit: true,
+    can_create: true,
+    can_delete: true
+  }));
+};
 
 export function useUserManagement() {
   const [users, setUsers] = useState<User[]>([]);
   const [permissions, setPermissions] = useState<Record<string, ModulePermission[]>>({});
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
-  const { user } = useAuth(); // Usar o contexto de autenticação
+  const { user } = useAuth();
 
   // Função para buscar todos os usuários e suas permissões
   const fetchUsers = useCallback(async () => {
@@ -77,19 +112,20 @@ export function useUserManagement() {
       const permissionsByUser: Record<string, ModulePermission[]> = {};
       
       // Inicializa a estrutura de permissões para todos os módulos
-      const initializePermissions = () => MODULES.map(mod => ({
-        module: mod.module,
-        label: mod.label,
-        icon: mod.icon,
-        can_view: false,
-        can_edit: false,
-        can_create: false,
-        can_delete: false
-      }));
+      const initializePermissions = (userId: string) => {
+        const defaultPerms = getDefaultPermissions('viewer');
+        return defaultPerms.map(perm => ({
+          ...perm,
+          can_view: false,
+          can_edit: false,
+          can_create: false,
+          can_delete: false
+        }));
+      };
 
       usersData?.forEach(userData => {
         const userId = userData.id;
-        permissionsByUser[userId] = initializePermissions();
+        permissionsByUser[userId] = initializePermissions(userId);
         
         // Preenche com as permissões existentes
         permissionsData?.filter(p => p.user_id === userId).forEach(permission => {
@@ -143,20 +179,16 @@ export function useUserManagement() {
       }
       
       newUser = createdUser;
-      console.log('User created successfully:', newUser);
 
-      // 2. Criar permissões padrão para o novo usuário
-      const defaultPermissions = MODULES.map(mod => ({
+      // 2. Criar permissões padrão para o novo usuário baseadas no perfil
+      const defaultPermissions = getDefaultPermissions(userData.role).map(mod => ({
         user_id: newUser!.id,
         module: mod.module,
-        // Permissões padrão: Visualizador tem acesso a tudo, exceto settings
-        can_view: mod.module !== 'settings', 
-        can_edit: false,
-        can_create: false,
-        can_delete: false
+        can_view: mod.can_view,
+        can_edit: mod.can_edit,
+        can_create: mod.can_create,
+        can_delete: mod.can_delete
       }));
-
-      console.log('Creating default permissions:', defaultPermissions);
 
       const { error: permissionsError } = await supabase
         .from('user_permissions')
@@ -164,13 +196,9 @@ export function useUserManagement() {
 
       if (permissionsError) {
         console.error('Error creating permissions:', permissionsError);
-        // Não lançamos o erro aqui, mas logamos. Se a inserção de permissões falhar,
-        // o usuário ainda existe, mas sem permissões iniciais.
-        // Vamos lançar um erro para que o catch seja acionado, mas sem deletar o usuário.
         throw new Error(`Usuário criado, mas falha ao definir permissões: ${permissionsError.message}`);
       }
 
-      console.log('Permissions created successfully');
       await fetchUsers(); // Recarregar a lista
       toast({ title: "Sucesso", description: "Usuário criado com sucesso.", variant: "success" });
       return newUser;
@@ -178,11 +206,7 @@ export function useUserManagement() {
       console.error('Error in createUser:', error);
       const errorMessage = error instanceof Error ? error.message : 'Falha ao criar usuário.';
       
-      // Se o erro ocorreu após a criação do usuário (newUser existe), 
-      // mas antes ou durante a criação das permissões, o usuário foi criado.
-      // Se o erro for de duplicidade, o newUser será null.
       if (newUser && errorMessage.includes('falha ao definir permissões')) {
-         // Se o usuário foi criado, mas as permissões falharam, mostramos um aviso, mas retornamos sucesso parcial.
          toast({ title: "Aviso", description: `Usuário ${newUser.username} criado, mas as permissões iniciais falharam. Edite as permissões manualmente.`, variant: "warning" });
          await fetchUsers();
          return newUser;
@@ -232,30 +256,23 @@ export function useUserManagement() {
       return false;
     }
     
-    console.log('Attempting to delete user with ID:', userId);
-    
     try {
       // Excluir usuário
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('users')
         .delete()
         .eq('id', userId);
 
       if (error) {
-        console.error('Error deleting user from Supabase:', error);
-        throw new Error(error.message || 'Erro ao excluir usuário.');
+        const errorMessage = error.message || 'Erro ao excluir usuário.';
+        throw new Error(errorMessage);
       }
 
-      console.log('User deleted successfully from Supabase:', data);
-      
-      // Atualizar a lista localmente
-      await fetchUsers(); 
-      console.log('User list refetched after deletion.');
-
+      await fetchUsers(); // Recarregar a lista
       toast({ title: "Sucesso", description: "Usuário excluído com sucesso.", variant: "success" });
       return true;
     } catch (error) {
-      console.error('Error in deleteUser:', error);
+      console.error('Error deleting user:', error);
       const errorMessage = error instanceof Error ? error.message : 'Falha ao excluir usuário.';
       toast({ title: "Erro", description: errorMessage, variant: "destructive" });
       return false;

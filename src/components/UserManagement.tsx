@@ -136,14 +136,8 @@ export function UserManagement() {
 
   const handleEditPermissions = (userId: string) => {
     setEditingPermissions(userId);
-    // Garantir que as permissões sejam inicializadas com base nos dados do hook
-    const currentPermissions = permissions[userId] || [
-      { module: 'overview', label: 'Visão Geral', icon: FileText, can_view: false, can_edit: false, can_create: false, can_delete: false },
-      { module: 'contracts', label: 'Contratos', icon: FileText, can_view: false, can_edit: false, can_create: false, can_delete: false },
-      { module: 'managing-units', label: 'Unidades Gestoras', icon: FileText, can_view: false, can_edit: false, can_create: false, can_delete: false },
-      { module: 'reports', label: 'Relatórios', icon: FileText, can_view: false, can_edit: false, can_create: false, can_delete: false },
-      { module: 'settings', label: 'Configurações', icon: FileText, can_view: false, can_edit: false, can_create: false, can_delete: false },
-    ];
+    // Buscar as permissões atuais do usuário
+    const currentPermissions = permissions[userId] || [];
     setUserPermissions(currentPermissions);
   };
 
