@@ -214,6 +214,7 @@ export function useContractManagement(refetchData: () => void): UseContractManag
     const { data, error } = await query.select().single();
 
     if (error) {
+      console.error('Erro ao salvar empresa:', error);
       toast({ title: `Erro ao ${isEditing ? 'atualizar' : 'salvar'} empresa`, description: error.message, variant: "destructive" });
       return null;
     }
@@ -233,9 +234,6 @@ export function useContractManagement(refetchData: () => void): UseContractManag
       toast({ title: "Erro ao excluir empresa", description: error.message, variant: "destructive" });
       return false;
     }
-
-    refetchData();
-    toast({ title: "Sucesso", description: "Empresa excluída com sucesso.", variant: "success" });
     return true;
   }, [refetchData, toast]);
 
