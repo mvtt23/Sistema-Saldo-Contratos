@@ -232,27 +232,30 @@ export function useUserManagement() {
       return false;
     }
     
+    console.log('Attempting to delete user with ID:', userId);
+    
     try {
-      // A exclusão do usuário deve ser feita em cascata no banco de dados
-      // (assumindo que a FK em user_permissions tem ON DELETE CASCADE)
-      // Se não tiver, o banco falhará aqui.
-      
       // Excluir usuário
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('users')
         .delete()
         .eq('id', userId);
 
       if (error) {
-        const errorMessage = error.message || 'Erro ao excluir usuário.';
-        throw new Error(errorMessage);
+        console.error('Error deleting user from Supabase:', error);
+        throw new Error(error.message || 'Erro ao excluir usuário.');
       }
 
-      await fetchUsers(); // Recarregar a lista
+      console.log('User deleted successfully from Supabase:', data);
+      
+      // Atualizar a lista localmente
+      await fetchUsers(); 
+      console.log('User list refetched after deletion.');
+
       toast({ title: "Sucesso", description: "Usuário excluído com sucesso.", variant: "success" });
       return true;
     } catch (error) {
-      console.error('Error deleting user:', error);
+      console.error('Error in deleteUser:', error);
       const errorMessage = error instanceof Error ? error.message : 'Falha ao excluir usuário.';
       toast({ title: "Erro", description: errorMessage, variant: "destructive" });
       return false;
