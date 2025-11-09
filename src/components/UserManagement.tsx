@@ -73,16 +73,14 @@ export function UserManagement() {
       return;
     }
 
+    let success = false;
+
     if (editingUser) {
-      const success = await updateUser(editingUser.id, {
+      success = await updateUser(editingUser.id, {
         username: userForm.username,
         role: userForm.role,
         ...(userForm.password && { password: userForm.password })
       });
-      if (success) {
-        setIsAddingUser(false);
-        setEditingUser(null);
-      }
     } else {
       const newUser = await createUser({
         username: userForm.username,
@@ -90,9 +88,14 @@ export function UserManagement() {
         role: userForm.role
       });
       if (newUser) {
-        setIsAddingUser(false);
-        setEditingUser(null);
+        success = true;
       }
+    }
+    
+    if (success) {
+      setIsAddingUser(false);
+      setEditingUser(null);
+      setUserForm({ username: '', password: '', role: 'viewer' });
     }
   };
 
@@ -109,7 +112,17 @@ export function UserManagement() {
 
   const handleEditPermissions = (userId: string) => {
     setEditingPermissions(userId);
-    setUserPermissions(permissions[userId] || []);
+    // Garantir que as permissões sejam inicializadas com base nos dados do hook
+    const currentPermissions = permissions[userId] || MODULES.map(mod => ({
+      module: mod.module,
+      label: mod.label,
+      icon: mod.icon,
+      can_view: false,
+      can_edit: false,
+      can_create: false,
+      can_delete: false
+    }));
+    setUserPermissions(currentPermissions);
   };
 
   const handlePermissionChange = (moduleIndex: number, field: string, value: boolean) => {
@@ -204,6 +217,7 @@ export function UserManagement() {
 
                 <div className="flex justify-end space-x-2 mt-4">
                   <Button
+                    type="button"
                     variant="outline"
                     onClick={() => {
                       setIsAddingUser(false);
@@ -212,7 +226,7 @@ export function UserManagement() {
                   >
                     Cancelar
                   </Button>
-                  <Button onClick={handleSaveUser} className="bg-blue-600 hover:bg-blue-700">
+                  <Button type="button" onClick={handleSaveUser} className="bg-blue-600 hover:bg-blue-700">
                     {editingUser ? 'Atualizar' : 'Criar'}
                   </Button>
                 </div>
