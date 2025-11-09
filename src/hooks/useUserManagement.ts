@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext'; // Importar useAuth
-import { FileText } from 'lucide-react';
+import { FileText, Building2, LayoutDashboard, FileBarChart } from 'lucide-react';
 
 interface User {
   id: string;
@@ -34,10 +34,11 @@ interface ModulePermission {
 }
 
 const MODULES = [
-  { module: 'dashboard', label: 'Dashboard', icon: FileText },
+  { module: 'overview', label: 'Visão Geral', icon: LayoutDashboard },
   { module: 'contracts', label: 'Contratos', icon: FileText },
-  { module: 'managing_units', label: 'Unidades Gestoras', icon: FileText },
-  { module: 'reports', label: 'Relatórios', icon: FileText },
+  { module: 'managing-units', label: 'Unidades Gestoras', icon: Building2 },
+  { module: 'reports', label: 'Relatórios', icon: FileBarChart },
+  { module: 'settings', label: 'Configurações', icon: FileText }, // Adicionado settings
 ];
 
 export function useUserManagement() {
@@ -74,25 +75,32 @@ export function useUserManagement() {
 
       // Organizar permissões por usuário
       const permissionsByUser: Record<string, ModulePermission[]> = {};
-      permissionsData?.forEach(permission => {
-        if (!permissionsByUser[permission.user_id]) {
-          permissionsByUser[permission.user_id] = MODULES.map(mod => ({
-            module: mod.module,
-            label: mod.label,
-            icon: mod.icon,
-            can_view: false,
-            can_edit: false,
-            can_create: false,
-            can_delete: false
-          }));
-        }
-        const userPermission = permissionsByUser[permission.user_id].find(p => p.module === permission.module);
-        if (userPermission) {
-          userPermission.can_view = permission.can_view;
-          userPermission.can_edit = permission.can_edit;
-          userPermission.can_create = permission.can_create;
-          userPermission.can_delete = permission.can_delete;
-        }
+      
+      // Inicializa a estrutura de permissões para todos os módulos
+      const initializePermissions = () => MODULES.map(mod => ({
+        module: mod.module,
+        label: mod.label,
+        icon: mod.icon,
+        can_view: false,
+        can_edit: false,
+        can_create: false,
+        can_delete: false
+      }));
+
+      usersData?.forEach(userData => {
+        const userId = userData.id;
+        permissionsByUser[userId] = initializePermissions();
+        
+        // Preenche com as permissões existentes
+        permissionsData?.filter(p => p.user_id === userId).forEach(permission => {
+          const userPermission = permissionsByUser[userId].find(p => p.module === permission.module);
+          if (userPermission) {
+            userPermission.can_view = permission.can_view;
+            userPermission.can_edit = permission.can_edit;
+            userPermission.can_create = permission.can_create;
+            userPermission.can_delete = permission.can_delete;
+          }
+        });
       });
 
       setUsers(usersData || []);
@@ -113,11 +121,11 @@ export function useUserManagement() {
       return null;
     }
     
+    let newUser = null;
+    
     try {
-      console.log('Creating user with data:', userData);
-      
-      // Primeiro, criar o usuário
-      const { data: newUser, error: userError } = await supabase
+      // 1. Criar o usuário
+      const { data: createdUser, error: userError } = await supabase
         .from('users')
         .insert([{
           username: userData.username,
@@ -133,14 +141,16 @@ export function useUserManagement() {
         const errorMessage = userError.message || 'Erro ao criar usuário.';
         throw new Error(errorMessage);
       }
-
+      
+      newUser = createdUser;
       console.log('User created successfully:', newUser);
 
-      // Criar permissões padrão para o novo usuário
+      // 2. Criar permissões padrão para o novo usuário
       const defaultPermissions = MODULES.map(mod => ({
-        user_id: newUser.id,
+        user_id: newUser!.id,
         module: mod.module,
-        can_view: true,
+        // Permissões padrão: Visualizador tem acesso a tudo, exceto settings
+        can_view: mod.module !== 'settings', 
         can_edit: false,
         can_create: false,
         can_delete: false
@@ -154,13 +164,10 @@ export function useUserManagement() {
 
       if (permissionsError) {
         console.error('Error creating permissions:', permissionsError);
-        const errorMessage = permissionsError.message || 'Erro ao criar permissões.';
-        // Se falhar ao criar permissões, exclua o usuário para manter consistência
-        await supabase
-          .from('users')
-          .delete()
-          .eq('id', newUser.id);
-        throw new Error(errorMessage);
+        // Não lançamos o erro aqui, mas logamos. Se a inserção de permissões falhar,
+        // o usuário ainda existe, mas sem permissões iniciais.
+        // Vamos lançar um erro para que o catch seja acionado, mas sem deletar o usuário.
+        throw new Error(`Usuário criado, mas falha ao definir permissões: ${permissionsError.message}`);
       }
 
       console.log('Permissions created successfully');
@@ -170,6 +177,17 @@ export function useUserManagement() {
     } catch (error) {
       console.error('Error in createUser:', error);
       const errorMessage = error instanceof Error ? error.message : 'Falha ao criar usuário.';
+      
+      // Se o erro ocorreu após a criação do usuário (newUser existe), 
+      // mas antes ou durante a criação das permissões, o usuário foi criado.
+      // Se o erro for de duplicidade, o newUser será null.
+      if (newUser && errorMessage.includes('falha ao definir permissões')) {
+         // Se o usuário foi criado, mas as permissões falharam, mostramos um aviso, mas retornamos sucesso parcial.
+         toast({ title: "Aviso", description: `Usuário ${newUser.username} criado, mas as permissões iniciais falharam. Edite as permissões manualmente.`, variant: "warning" });
+         await fetchUsers();
+         return newUser;
+      }
+      
       toast({ title: "Erro", description: errorMessage, variant: "destructive" });
       return null;
     }
@@ -214,15 +232,11 @@ export function useUserManagement() {
       return false;
     }
     
-    if (!confirm('Tem certeza que deseja excluir este usuário?')) return false;
-
     try {
-      // Excluir permissões primeiro
-      await supabase
-        .from('user_permissions')
-        .delete()
-        .eq('user_id', userId);
-
+      // A exclusão do usuário deve ser feita em cascata no banco de dados
+      // (assumindo que a FK em user_permissions tem ON DELETE CASCADE)
+      // Se não tiver, o banco falhará aqui.
+      
       // Excluir usuário
       const { error } = await supabase
         .from('users')

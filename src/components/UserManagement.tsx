@@ -28,7 +28,7 @@ interface ModulePermission {
 }
 
 export function UserManagement() {
-  const { toast } = useToast();
+  const { toast, dismiss } = useToast();
   const { 
     users, 
     permissions, 
@@ -99,8 +99,32 @@ export function UserManagement() {
     }
   };
 
-  const handleDeleteUser = async (id: string) => {
-    await deleteUser(id);
+  const handleDeleteUser = (user: User) => {
+    const toastId = toast({
+      title: "Confirmação de Exclusão",
+      description: `Tem certeza que deseja excluir o usuário "${user.username}"?`,
+      variant: "destructive",
+      action: (
+        <div className="flex gap-2">
+          <Button
+            variant="secondary"
+            onClick={() => dismiss(toastId)}
+          >
+            Cancelar
+          </Button>
+          <Button
+            variant="destructive"
+            onClick={async () => {
+              dismiss(toastId);
+              await deleteUser(user.id);
+            }}
+          >
+            Confirmar Exclusão
+          </Button>
+        </div>
+      ),
+      duration: 1000000, // Manter aberto até interação
+    }).id;
   };
 
   const handleToggleActive = async (user: User) => {
@@ -113,15 +137,13 @@ export function UserManagement() {
   const handleEditPermissions = (userId: string) => {
     setEditingPermissions(userId);
     // Garantir que as permissões sejam inicializadas com base nos dados do hook
-    const currentPermissions = permissions[userId] || MODULES.map(mod => ({
-      module: mod.module,
-      label: mod.label,
-      icon: mod.icon,
-      can_view: false,
-      can_edit: false,
-      can_create: false,
-      can_delete: false
-    }));
+    const currentPermissions = permissions[userId] || [
+      { module: 'overview', label: 'Visão Geral', icon: FileText, can_view: false, can_edit: false, can_create: false, can_delete: false },
+      { module: 'contracts', label: 'Contratos', icon: FileText, can_view: false, can_edit: false, can_create: false, can_delete: false },
+      { module: 'managing-units', label: 'Unidades Gestoras', icon: FileText, can_view: false, can_edit: false, can_create: false, can_delete: false },
+      { module: 'reports', label: 'Relatórios', icon: FileText, can_view: false, can_edit: false, can_create: false, can_delete: false },
+      { module: 'settings', label: 'Configurações', icon: FileText, can_view: false, can_edit: false, can_create: false, can_delete: false },
+    ];
     setUserPermissions(currentPermissions);
   };
 
@@ -274,7 +296,7 @@ export function UserManagement() {
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => handleDeleteUser(user.id)}
+                        onClick={() => handleDeleteUser(user)}
                         className="text-red-600 hover:text-red-700"
                       >
                         <Trash2 className="w-4 h-4" />
