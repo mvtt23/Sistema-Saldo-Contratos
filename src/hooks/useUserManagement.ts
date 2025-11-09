@@ -1,62 +1,275 @@
-const updateUser = useCallback(async (userId: string, userData: { username?: string; password?: string; role?: string; is_active?: boolean }) => {
-    if (user?.role !== 'admin') {
-      toast({ title: "Acesso Negado", description: "Somente administradores podem atualizar usuários.", variant: "destructive" });
+import { useState, useCallback, useEffect } from 'react';
+import { supabase } from '@/lib/supabase';
+import { useToast } from '@/hooks/use-toast';
+
+interface User {
+  id: string;
+  username: string;
+  role: string;
+  is_active: boolean;
+  created_at: string;
+}
+
+interface Permission {
+  module: string;
+  can_view: boolean;
+  can_edit: boolean;
+  can_create: boolean;
+  can_delete: boolean;
+}
+
+interface ModulePermission {
+  module: string;
+  label: string;
+  icon: any;
+  can_view: boolean;
+  can_edit: boolean;
+  can_create: boolean;
+  can_delete: boolean;
+}
+
+export function useUserManagement() {
+  const [users, setUsers] = useState<User[]>([]);
+  const [permissions, setPermissions] = useState<Record<string, ModulePermission[]>>({});
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
+
+  // Módulos disponíveis no sistema
+  const modules: ModulePermission[] = [
+    { module: 'dashboard', label: 'Visão Geral', icon: 'LayoutDashboard', can_view: true, can_edit: false, can_create: false, can_delete: false },
+    { module: 'contracts', label: 'Contratos', icon: 'FileText', can_view: true, can_edit: false, can_create: false, can_delete: false },
+    { module: 'managing_units', label: 'Unidades Gestoras', icon: 'Building2', can_view: true, can_edit: false, can_create: false, can_delete: false },
+    { module: 'reports', label: 'Relatórios', icon: 'FileBarChart', can_view: true, can_edit: false, can_create: false, can_delete: false },
+    { module: 'settings', label: 'Configurações', icon: 'Settings', can_view: true, can_edit: false, can_create: false, can_delete: false },
+  ];
+
+  // Buscar todos os usuários
+  const fetchUsers = useCallback(async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      setUsers(data || []);
+      
+      // Buscar permissões para cada usuário
+      const userPermissions: Record<string, ModulePermission[]> = {};
+      
+      for (const user of data || []) {
+        const { data: userPerms } = await supabase
+          .from('user_permissions')
+          .select('*')
+          .eq('user_id', user.id);
+
+        // Mapear permissões para o formato correto
+        const userModulePerms = modules.map(module => {
+          const perm = userPerms?.find(p => p.module === module.module);
+          return {
+            ...module,
+            can_view: perm?.can_view || false,
+            can_edit: perm?.can_edit || false,
+            can_create: perm?.can_create || false,
+            can_delete: perm?.can_delete || false,
+          };
+        });
+
+        userPermissions[user.id] = userModulePerms;
+      }
+
+      setPermissions(userPermissions);
+    } catch (error) {
+      console.error('Erro ao buscar usuários:', error);
+      toast({ title: "Erro", description: "Falha ao carregar usuários", variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  }, [toast]);
+
+  // Criar novo usuário
+  const createUser = useCallback(async (userData: { username: string; password: string; role: string }) => {
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .insert([{
+          username: userData.username,
+          password: userData.password,
+          role: userData.role,
+          is_active: true,
+        }])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Criar permissões padrão baseadas no perfil
+      const defaultPermissions = getDefaultPermissions(userData.role);
+      
+      const permissionsToInsert = defaultPermissions.map(perm => ({
+        user_id: data.id,
+        module: perm.module,
+        can_view: perm.can_view,
+        can_edit: perm.can_edit,
+        can_create: perm.can_create,
+        can_delete: perm.can_delete,
+      }));
+
+      await supabase
+        .from('user_permissions')
+        .insert(permissionsToInsert);
+
+      await fetchUsers(); // Recarregar lista
+      toast({ title: "Sucesso", description: "Usuário criado com sucesso", variant: "success" });
+      return true;
+    } catch (error) {
+      console.error('Erro ao criar usuário:', error);
+      toast({ title: "Erro", description: "Falha ao criar usuário", variant: "destructive" });
       return false;
     }
-    
+  }, [fetchUsers, toast]);
+
+  // Atualizar usuário
+  const updateUser = useCallback(async (userId: string, userData: { username?: string; password?: string; role?: string; is_active?: boolean }) => {
     try {
-      console.log('Updating user:', userId, 'with data:', userData);
       const { error } = await supabase
         .from('users')
         .update(userData)
         .eq('id', userId);
 
-      if (error) {
-        console.error('Error updating user:', error);
-        const errorMessage = error.message || 'Erro ao atualizar usuário.';
-        throw new Error(errorMessage);
+      if (error) throw error;
+
+      // Se o perfil mudou, atualizar permissões
+      if (userData.role) {
+        // Remover permissões antigas
+        await supabase
+          .from('user_permissions')
+          .delete()
+          .eq('user_id', userId);
+
+        // Adicionar novas permissões
+        const defaultPermissions = getDefaultPermissions(userData.role);
+        
+        const permissionsToInsert = defaultPermissions.map(perm => ({
+          user_id: userId,
+          module: perm.module,
+          can_view: perm.can_view,
+          can_edit: perm.can_edit,
+          can_create: perm.can_create,
+          can_delete: perm.can_delete,
+        }));
+
+        await supabase
+          .from('user_permissions')
+          .insert(permissionsToInsert);
       }
 
-      console.log('User updated successfully:', userId);
-      await fetchUsers(); // Recarregar a lista
-      toast({ title: "Sucesso", description: "Usuário atualizado com sucesso.", variant: "success" });
+      await fetchUsers(); // Recarregar lista
+      toast({ title: "Sucesso", description: "Usuário atualizado com sucesso", variant: "success" });
       return true;
     } catch (error) {
-      console.error('Error updating user:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Falha ao atualizar usuário.';
-      toast({ title: "Erro", description: errorMessage, variant: "destructive" });
+      console.error('Erro ao atualizar usuário:', error);
+      toast({ title: "Erro", description: "Falha ao atualizar usuário", variant: "destructive" });
       return false;
     }
-  }, [fetchUsers, toast, user?.role]);
+  }, [fetchUsers, toast]);
 
+  // Excluir usuário
   const deleteUser = useCallback(async (userId: string) => {
-    if (user?.role !== 'admin') {
-      toast({ title: "Acesso Negado", description: "Somente administradores podem excluir usuários.", variant: "destructive" });
-      return false;
-    }
-    
     try {
-      console.log('Deleting user:', userId);
+      // Excluir permissões primeiro
+      await supabase
+        .from('user_permissions')
+        .delete()
+        .eq('user_id', userId);
+
       // Excluir usuário
       const { error } = await supabase
         .from('users')
         .delete()
         .eq('id', userId);
 
-      if (error) {
-        console.error('Error deleting user:', error);
-        const errorMessage = error.message || 'Erro ao excluir usuário.';
-        throw new Error(errorMessage);
-      }
+      if (error) throw error;
 
-      console.log('User deleted successfully:', userId);
-      await fetchUsers(); // Recarregar a lista
-      toast({ title: "Sucesso", description: "Usuário excluído com sucesso.", variant: "success" });
+      await fetchUsers(); // Recarregar lista
+      toast({ title: "Sucesso", description: "Usuário excluído com sucesso", variant: "success" });
       return true;
     } catch (error) {
-      console.error('Error deleting user:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Falha ao excluir usuário.';
-      toast({ title: "Erro", description: errorMessage, variant: "destructive" });
+      console.error('Erro ao excluir usuário:', error);
+      toast({ title: "Erro", description: "Falha ao excluir usuário", variant: "destructive" });
       return false;
     }
-  }, [fetchUsers, toast, user?.role]);
+  }, [fetchUsers, toast]);
+
+  // Atualizar permissões específicas de um usuário
+  const updateUserPermissions = useCallback(async (userId: string, userPermissions: ModulePermission[]) => {
+    try {
+      // Remover permissões antigas
+      await supabase
+        .from('user_permissions')
+        .delete()
+        .eq('user_id', userId);
+
+      // Adicionar novas permissões
+      const permissionsToInsert = userPermissions.map(perm => ({
+        user_id: userId,
+        module: perm.module,
+        can_view: perm.can_view,
+        can_edit: perm.can_edit,
+        can_create: perm.can_create,
+        can_delete: perm.can_delete,
+      }));
+
+      await supabase
+        .from('user_permissions')
+        .insert(permissionsToInsert);
+
+      await fetchUsers(); // Recarregar lista
+      toast({ title: "Sucesso", description: "Permissões atualizadas com sucesso", variant: "success" });
+      return true;
+    } catch (error) {
+      console.error('Erro ao atualizar permissões:', error);
+      toast({ title: "Erro", description: "Falha ao atualizar permissões", variant: "destructive" });
+      return false;
+    }
+  }, [fetchUsers, toast]);
+
+  // Função auxiliar para obter permissões padrão por perfil
+  const getDefaultPermissions = (role: string): ModulePermission[] => {
+    if (role === 'viewer') {
+      return [
+        { ...modules[0], can_view: true }, // Dashboard
+        { ...modules[1], can_view: true }, // Contratos (visualização)
+        { ...modules[3], can_view: true }, // Relatórios
+      ];
+    } else if (role === 'manager') {
+      return [
+        { ...modules[0], can_view: true }, // Dashboard
+        { ...modules[1], can_view: true, can_edit: true, can_create: true }, // Contratos
+        { ...modules[2], can_view: true, can_edit: true, can_create: true }, // Unidades Gestoras
+        { ...modules[3], can_view: true }, // Relatórios
+      ];
+    } else if (role === 'admin') {
+      return modules.map(module => ({ ...module, can_view: true, can_edit: true, can_create: true, can_delete: true }));
+    }
+    return [];
+  };
+
+  // Carregar dados iniciais
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]);
+
+  return {
+    users,
+    permissions,
+    loading,
+    fetchUsers,
+    createUser,
+    updateUser,
+    deleteUser,
+    updateUserPermissions,
+  };
+}
