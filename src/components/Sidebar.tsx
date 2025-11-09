@@ -31,6 +31,25 @@ export function Sidebar({ activePage, onPageChange }: SidebarProps) {
     await signOut();
   };
 
+  // Filtrar itens do menu com base no perfil do usuário
+  const filteredMenuItems = menuItems.filter(item => {
+    // Admin pode ver tudo
+    if (user?.role === 'admin') return true;
+    
+    // Visualizador só pode ver: Visão Geral, Contratos (pesquisa) e Relatórios
+    if (user?.role === 'viewer') {
+      return item.id === 'overview' || item.id === 'contracts' || item.id === 'reports';
+    }
+    
+    // Gerente pode ver tudo exceto configurações
+    if (user?.role === 'manager') {
+      return item.id !== 'settings';
+    }
+    
+    // Por padrão, não mostrar
+    return false;
+  });
+
   return (
     <div className="fixed left-0 top-0 h-full w-64 bg-blue-900 text-white shadow-lg flex flex-col">
       <div className="flex-1">
@@ -47,15 +66,7 @@ export function Sidebar({ activePage, onPageChange }: SidebarProps) {
         </div>
 
         <nav className="mt-6">
-          {menuItems.map((item) => {
-            if (user?.role !== 'admin' && item.module === 'settings') {
-              return null;
-            }
-
-            if (user?.role !== 'admin' && !canAccessModule(item.module)) {
-              return null;
-            }
-
+          {filteredMenuItems.map((item) => {
             const Icon = item.icon;
             const isActive = activePage === item.id;
 
