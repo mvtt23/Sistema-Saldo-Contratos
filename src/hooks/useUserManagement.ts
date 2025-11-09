@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext'; // Importar useAuth
 import { FileText } from 'lucide-react';
 
 interface User {
@@ -44,6 +45,7 @@ export function useUserManagement() {
   const [permissions, setPermissions] = useState<Record<string, ModulePermission[]>>({});
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const { user } = useAuth(); // Usar o contexto de autenticação
 
   // Função para buscar todos os usuários e suas permissões
   const fetchUsers = useCallback(async () => {
@@ -106,6 +108,11 @@ export function useUserManagement() {
 
   // Função para criar um novo usuário
   const createUser = useCallback(async (userData: { username: string; password: string; role: string }) => {
+    if (user?.role !== 'admin') {
+      toast({ title: "Acesso Negado", description: "Somente administradores podem criar usuários.", variant: "destructive" });
+      return null;
+    }
+    
     try {
       console.log('Creating user with data:', userData);
       
@@ -166,10 +173,15 @@ export function useUserManagement() {
       toast({ title: "Erro", description: errorMessage, variant: "destructive" });
       return null;
     }
-  }, [fetchUsers, toast]);
+  }, [fetchUsers, toast, user?.role]);
 
   // Função para atualizar um usuário
   const updateUser = useCallback(async (userId: string, userData: { username?: string; password?: string; role?: string; is_active?: boolean }) => {
+    if (user?.role !== 'admin') {
+      toast({ title: "Acesso Negado", description: "Somente administradores podem atualizar usuários.", variant: "destructive" });
+      return false;
+    }
+    
     try {
       const { error } = await supabase
         .from('users')
@@ -193,10 +205,15 @@ export function useUserManagement() {
       toast({ title: "Erro", description: errorMessage, variant: "destructive" });
       return false;
     }
-  }, [fetchUsers, toast]);
+  }, [fetchUsers, toast, user?.role]);
 
   // Função para excluir um usuário
   const deleteUser = useCallback(async (userId: string) => {
+    if (user?.role !== 'admin') {
+      toast({ title: "Acesso Negado", description: "Somente administradores podem excluir usuários.", variant: "destructive" });
+      return false;
+    }
+    
     if (!confirm('Tem certeza que deseja excluir este usuário?')) return false;
 
     try {
@@ -226,10 +243,15 @@ export function useUserManagement() {
       toast({ title: "Erro", description: errorMessage, variant: "destructive" });
       return false;
     }
-  }, [fetchUsers, toast]);
+  }, [fetchUsers, toast, user?.role]);
 
   // Função para atualizar permissões de um usuário
   const updateUserPermissions = useCallback(async (userId: string, userPermissions: ModulePermission[]) => {
+    if (user?.role !== 'admin') {
+      toast({ title: "Acesso Negado", description: "Somente administradores podem atualizar permissões.", variant: "destructive" });
+      return false;
+    }
+    
     try {
       // Preparar dados para atualização
       const permissionsToUpdate = userPermissions.map(perm => ({
@@ -266,7 +288,7 @@ export function useUserManagement() {
       toast({ title: "Erro", description: errorMessage, variant: "destructive" });
       return false;
     }
-  }, [fetchUsers, toast]);
+  }, [fetchUsers, toast, user?.role]);
 
   return {
     users,
