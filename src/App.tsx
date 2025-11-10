@@ -147,8 +147,8 @@ function App() {
     <div className="min-h-screen bg-gray-50 flex">
       <Sidebar activePage={activePage} onPageChange={handlePageChange} />
       
-      <main className="flex-1 ml-64">
-        <div className="p-8">
+      <main className="flex-1 ml-0 md:ml-64">
+        <div className="p-4 md:p-8">
           {renderContent()}
         </div>
       </main>

@@ -194,7 +194,7 @@ export function UserManagement() {
                 <h4 className="font-semibold mb-4">
                   {editingUser ? 'Editar Usuário' : 'Novo Usuário'}
                 </h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4">
                   <div>
                     <Label htmlFor="username">Nome de Usuário *</Label>
                     <Input
@@ -308,7 +308,7 @@ export function UserManagement() {
                         {userPermissions.map((perm, idx) => (
                           <div key={perm.module} className="bg-gray-50 p-3 rounded-lg">
                             <p className="font-medium mb-2">{perm.label}</p>
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                            <div className="grid grid-cols-2 gap-3">
                               <label className="flex items-center space-x-2 text-sm">
                                 <Checkbox
                                   checked={perm.can_view}

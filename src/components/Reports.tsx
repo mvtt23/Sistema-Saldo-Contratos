@@ -64,7 +64,7 @@ export function Reports({ contracts, managingUnits, onContractSelect }: ReportsP
     body { 
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
       margin: 0; 
-      padding: 40px; 
+      padding: 20px; 
       line-height: 1.6; 
       color: #333;
       background: #fff;
@@ -72,24 +72,24 @@ export function Reports({ contracts, managingUnits, onContractSelect }: ReportsP
     .header { 
       text-align: center; 
       border-bottom: 3px solid #2563EB; 
-      padding-bottom: 30px; 
-      margin-bottom: 40px;
+      padding-bottom: 20px; 
+      margin-bottom: 30px;
     }
     .header h1 { 
       color: #2563EB; 
       margin: 0; 
-      font-size: 28px; 
+      font-size: 24px; 
       font-weight: bold;
     }
     .header h2 { 
       color: #666; 
       margin: 10px 0 0 0; 
-      font-size: 18px; 
+      font-size: 16px; 
       font-weight: normal;
     }
     .contract-info { 
       background: #f8fafc; 
-      padding: 25px; 
+      padding: 20px; 
       border-radius: 8px; 
       margin-bottom: 30px;
       border-left: 4px solid #2563EB;
@@ -97,11 +97,11 @@ export function Reports({ contracts, managingUnits, onContractSelect }: ReportsP
     .info-grid { 
       display: grid; 
       grid-template-columns: 1fr 1fr; 
-      gap: 20px; 
-      margin-bottom: 20px;
+      gap: 15px; 
+      margin-bottom: 15px;
     }
     .info-item { 
-      margin-bottom: 15px;
+      margin-bottom: 10px;
     }
     .info-label { 
       font-weight: bold; 
@@ -111,32 +111,32 @@ export function Reports({ contracts, managingUnits, onContractSelect }: ReportsP
     }
     .info-value { 
       color: #1f2937; 
-      font-size: 16px;
+      font-size: 14px;
     }
     .progress-section { 
-      margin: 30px 0;
+      margin: 25px 0;
     }
     .progress-bar { 
       width: 100%; 
-      height: 25px; 
+      height: 20px; 
       background: #e5e7eb; 
-      border-radius: 12px; 
+      border-radius: 10px; 
       overflow: hidden;
       margin: 10px 0;
     }
     .progress-fill { 
       height: 100%; 
       background: ${usagePercentage >= 90 ? '#dc2626' : usagePercentage >= 70 ? '#f59e0b' : '#16a34a'}; 
-      transition: width 0.3s ease;
-      border-radius: 12px;
+      border-radius: 10px;
+      width: ${Math.min(usagePercentage, 100)}%;
     }
     .invoices-section { 
-      margin-top: 40px;
+      margin-top: 30px;
     }
     .invoices-table { 
       width: 100%; 
       border-collapse: collapse; 
-      margin-top: 20px;
+      margin-top: 15px;
       background: white;
       border-radius: 8px;
       overflow: hidden;
@@ -145,13 +145,15 @@ export function Reports({ contracts, managingUnits, onContractSelect }: ReportsP
     .invoices-table th { 
       background: #2563EB; 
       color: white; 
-      padding: 15px; 
+      padding: 12px; 
       text-align: left; 
       font-weight: 600;
+      font-size: 12px;
     }
     .invoices-table td { 
-      padding: 12px 15px; 
+      padding: 10px 12px; 
       border-bottom: 1px solid #e5e7eb;
+      font-size: 11px;
     }
     .invoices-table tr:last-child td { 
       border-bottom: none;
@@ -161,32 +163,32 @@ export function Reports({ contracts, managingUnits, onContractSelect }: ReportsP
     }
     .summary { 
       background: #ecfdf5; 
-      padding: 25px; 
+      padding: 20px; 
       border-radius: 8px; 
-      margin: 30px 0;
+      margin: 25px 0;
       border-left: 4px solid #16a34a;
     }
     .signature-section { 
-      margin-top: 60px; 
+      margin-top: 50px; 
       text-align: center;
     }
     .signature-line { 
       border-top: 2px solid #374151; 
-      width: 300px; 
-      margin: 40px auto 10px; 
+      width: 250px; 
+      margin: 30px auto 10px; 
     }
     .value { 
       font-weight: bold; 
       color: #059669;
     }
     .contract-number { 
-      font-size: 24px; 
+      font-size: 20px; 
       font-weight: bold; 
       color: #2563EB; 
       margin-bottom: 10px;
     }
     @media print {
-      body { padding: 20px; }
+      body { padding: 10px; }
       .no-print { display: none; }
     }
   </style>
@@ -229,12 +231,12 @@ export function Reports({ contracts, managingUnits, onContractSelect }: ReportsP
   
   <div class="progress-section">
     <h3>Execução do Contrato</h3>
-    <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+    <div style="display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 12px;">
       <span>Progresso: <strong>${usagePercentage.toFixed(1)}%</strong></span>
       <span>Valor Utilizado: <strong class="value">${formatCurrency(contract.usedValue)}</strong></span>
     </div>
     <div class="progress-bar">
-      <div class="progress-fill" style="width: ${Math.min(usagePercentage, 100)}%"></div>
+      <div class="progress-fill"></div>
     </div>
   </div>
   
@@ -259,7 +261,7 @@ export function Reports({ contracts, managingUnits, onContractSelect }: ReportsP
         `).join('')}
       </tbody>
     </table>
-    ` : '<p style="color: #6b7280; font-style: italic;">Nenhuma nota fiscal registrada.</p>'}
+    ` : '<p style="color: #6b7280; font-style: italic; font-size: 12px;">Nenhuma nota fiscal registrada.</p>'}
   </div>
   
   <div class="summary">
@@ -288,7 +290,7 @@ export function Reports({ contracts, managingUnits, onContractSelect }: ReportsP
     <div class="signature-line"></div>
     <p><strong>${contractUnit?.responsible || 'Responsável'}</strong></p>
     <p>${contract.managingUnit}</p>
-    <p style="margin-top: 20px; color: #6b7280; font-size: 14px;">
+    <p style="margin-top: 15px; color: #6b7280; font-size: 11px;">
       Relatório gerado em ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}
     </p>
   </div>
@@ -367,7 +369,7 @@ export function Reports({ contracts, managingUnits, onContractSelect }: ReportsP
       font-weight: bold; 
       color: #374151; 
       display: block; 
-      margin-bottom: 3px;
+      margin-bottom: 5px;
     }
     .info-value { 
       color: #1f2937; 
@@ -701,12 +703,12 @@ RESUMO:
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-3xl font-bold text-gray-900 mb-2">Relatórios</h2>
+        <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">Relatórios</h2>
         <p className="text-gray-600">Gere relatórios em PDF dos contratos da prefeitura</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Seleção do tipo de relatório */}
+      <div className="grid grid-cols-1 gap-6">
+        {/* Seleção do tipo de relatório - Layout responsivo */}
         <Card className="lg:col-span-1">
           <CardHeader>
             <CardTitle className="flex items-center">
@@ -755,7 +757,7 @@ RESUMO:
           </CardContent>
         </Card>
 
-        {/* Formulário de filtros */}
+        {/* Formulário de filtros - Layout responsivo */}
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle>Filtros do Relatório</CardTitle>
@@ -802,6 +804,7 @@ RESUMO:
                   <Label htmlFor="unit">Secretaria</Label>
                   <Select value={selectedUnit} onValueChange={setSelectedUnit}>
                     <SelectTrigger>
+                      <Building2 className="w-4 h-4 mr-2" />
                       <SelectValue placeholder="Selecione a secretaria" />
                     </SelectTrigger>
                     <SelectContent>
@@ -869,7 +872,9 @@ RESUMO:
                       <SelectItem value="pregao-eletronico">Pregão Eletrônico</SelectItem>
                       <SelectItem value="concorrencia-publica">Concorrência Pública</SelectItem>
                       <SelectItem value="chamada-publica">Chamada Pública</SelectItem>
-                      <SelectItem value="registro-preco">Registro de Preço</SelectItem>
+                      <SelectItem value="registro-preco">
+<dyad-write path="src/components/Reports.tsx" description="Reports responsivo para mobile (continuação)">
+                        <SelectItem value="registro-preco">Registro de Preço</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -878,6 +883,7 @@ RESUMO:
                   <Label htmlFor="unitFilter">Filtrar por Secretaria (Opcional)</Label>
                   <Select value={selectedUnit} onValueChange={setSelectedUnit}>
                     <SelectTrigger>
+                      <Building2 className="w-4 h-4 mr-2" />
                       <SelectValue placeholder="Todas as secretarias" />
                     </SelectTrigger>
                     <SelectContent>
@@ -917,13 +923,13 @@ RESUMO:
         </Card>
       </div>
 
-      {/* Pré-visualização do PDF */}
+      {/* Pré-visualização do PDF - Layout responsivo */}
       {showPdfPreview && selectedContract && (
         <Card>
           <CardHeader>
             <div className="flex justify-between items-center">
               <CardTitle>Pré-visualização do Relatório</CardTitle>
-              <div className="space-x-2">
+              <div className="flex space-x-2">
                 <Button onClick={handleDownloadPDF} className="bg-green-600 hover:bg-green-700">
                   <Download className="w-4 h-4 mr-2" />
                   Baixar PDF

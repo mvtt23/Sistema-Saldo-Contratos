@@ -211,7 +211,7 @@ export function ContractForm({ onContractSave, managingUnits, companies, saveCom
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-3xl font-bold text-gray-900 mb-2">Cadastro de Contratos</h2>
+        <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">Cadastro de Contratos</h2>
         <p className="text-gray-600">Cadastre um novo contrato no sistema</p>
       </div>
 
@@ -227,31 +227,33 @@ export function ContractForm({ onContractSave, managingUnits, companies, saveCom
           <CardContent className="space-y-4">
             {selectedCompany && !editingCompany ? (
               <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h4 className="font-semibold text-green-800">{selectedCompany.name}</h4>
-                    <p className="text-sm text-green-600">CNPJ/CPF: {selectedCompany.document}</p>
-                    <p className="text-sm text-green-600">{selectedCompany.city}/{selectedCompany.state}</p>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleEditCompany(selectedCompany)}
-                    >
-                      <Edit2 className="w-4 h-4 mr-1" />
-                      Editar Dados
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={handleClearCompany}
-                    >
-                      <X className="w-4 h-4 mr-1" />
-                      Trocar
-                    </Button>
+                <div className="flex flex-col space-y-2">
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1">
+                      <h4 className="font-semibold text-green-800">{selectedCompany.name}</h4>
+                      <p className="text-sm text-green-600">CNPJ/CPF: {selectedCompany.document}</p>
+                      <p className="text-sm text-green-600">{selectedCompany.city}/{selectedCompany.state}</p>
+                    </div>
+                    <div className="flex gap-2 flex-wrap">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleEditCompany(selectedCompany)}
+                      >
+                        <Edit2 className="w-4 h-4 mr-1" />
+                        Editar
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleClearCompany}
+                      >
+                        <X className="w-4 h-4 mr-1" />
+                        Trocar
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -327,7 +329,7 @@ export function ContractForm({ onContractSave, managingUnits, companies, saveCom
                   </Button>
                 </div>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4">
                   <div>
                     <Label htmlFor="newCompanyName">Razão Social *</Label>
                     <Input
@@ -348,9 +350,6 @@ export function ContractForm({ onContractSave, managingUnits, companies, saveCom
                       required
                     />
                   </div>
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="newCompanyCity">Cidade *</Label>
                     <Input
@@ -413,7 +412,7 @@ export function ContractForm({ onContractSave, managingUnits, companies, saveCom
               </div>
             ) : (
               <div className="space-y-4">
-                <div className="flex gap-2">
+                <div className="flex flex-col sm:flex-row gap-2">
                   <div className="relative flex-1">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                     <Input
@@ -477,7 +476,7 @@ export function ContractForm({ onContractSave, managingUnits, companies, saveCom
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4">
               <div>
                 <Label htmlFor="contractNumber">Número do Contrato *</Label>
                 <Input
@@ -516,7 +515,7 @@ export function ContractForm({ onContractSave, managingUnits, companies, saveCom
               </div>
             )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4">
               <div>
                 <Label htmlFor="managingUnit">Secretaria *</Label>
                 <Select value={formData.managingUnit} onValueChange={(value) => handleInputChange('managingUnit', value)}>
@@ -546,7 +545,7 @@ export function ContractForm({ onContractSave, managingUnits, companies, saveCom
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4">
               <div>
                 <Label htmlFor="value">Valor do Contrato *</Label>
                 <Input
@@ -561,7 +560,7 @@ export function ContractForm({ onContractSave, managingUnits, companies, saveCom
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4">
               <div>
                 <Label htmlFor="startDate">Data de Início *</Label>
                 <Input
@@ -599,14 +598,14 @@ export function ContractForm({ onContractSave, managingUnits, companies, saveCom
           </CardContent>
         </Card>
 
-        {/* Botões de ação */}
-        <div className="flex justify-end space-x-4">
-          <Button type="button" variant="outline">
+        {/* Botões de ação - Layout responsivo */}
+        <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-4">
+          <Button type="button" variant="outline" className="w-full sm:w-auto">
             Cancelar
           </Button>
           <Button 
             type="submit" 
-            className="bg-blue-600 hover:bg-blue-700"
+            className="bg-blue-600 hover:bg-blue-700 w-full sm:w-auto"
             disabled={!selectedCompany}
           >
             <Save className="w-4 h-4 mr-2" />

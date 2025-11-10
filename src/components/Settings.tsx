@@ -108,11 +108,11 @@ export function Settings({ managingUnits }: SettingsProps) {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-3xl font-bold text-gray-900 mb-2">Configurações</h2>
+        <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">Configurações</h2>
         <p className="text-gray-600">Configure o sistema e gerencie usuários</p>
       </div>
 
-      {/* Configurações da Prefeitura */}
+      {/* Configurações da Prefeitura - Layout responsivo */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center">
@@ -180,7 +180,7 @@ export function Settings({ managingUnits }: SettingsProps) {
         </CardContent>
       </Card>
 
-      {/* Gerenciar Fiscais */}
+      {/* Gerenciar Fiscais - Layout responsivo */}
       <Card>
         <CardHeader>
           <div className="flex justify-between items-center">
@@ -198,13 +198,13 @@ export function Settings({ managingUnits }: SettingsProps) {
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Formulário de Fiscal */}
+          {/* Formulário de Fiscal - Layout responsivo */}
           {isAddingFiscal && (
             <div className="border rounded-lg p-4 bg-gray-50">
               <h4 className="font-semibold mb-4">
                 {editingFiscal ? 'Editar Fiscal' : 'Novo Fiscal'}
               </h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4">
                 <div>
                   <Label htmlFor="fiscalName">Nome Completo</Label>
                   <Input
@@ -246,12 +246,12 @@ export function Settings({ managingUnits }: SettingsProps) {
             </div>
           )}
 
-          {/* Lista de Fiscais */}
+          {/* Lista de Fiscais - Layout responsivo */}
           <div className="space-y-3">
             {fiscals.map(fiscal => (
               <div key={fiscal.id} className="border rounded-lg p-4 flex justify-between items-center">
                 <div className="flex-1">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 gap-2">
                     <div>
                       <p className="text-sm text-gray-500">Nome</p>
                       <p className="font-medium">{fiscal.name}</p>
@@ -296,7 +296,7 @@ export function Settings({ managingUnits }: SettingsProps) {
         </CardContent>
       </Card>
 
-      {/* Informações sobre Permissões */}
+      {/* Informações sobre Permissões - Layout responsivo */}
       <Card>
         <CardHeader>
           <CardTitle>Informações sobre Fiscais</CardTitle>
@@ -314,7 +314,7 @@ export function Settings({ managingUnits }: SettingsProps) {
         </CardContent>
       </Card>
 
-      {/* Gerenciamento de Usuários */}
+      {/* Gerenciamento de Usuários - Layout responsivo */}
       <UserManagement />
     </div>
   );

@@ -43,93 +43,99 @@ export function ContractCard({ contract, onClick }: ContractCardProps) {
       onClick={() => onClick(contract)}
     >
       <CardHeader className="pb-3">
-        <div className="flex items-start justify-between">
-          <div className="flex-1">
-            <CardTitle className="text-lg font-semibold text-gray-900 mb-2">
-              Contrato {contract.number}
-            </CardTitle>
-            <p className="text-sm text-gray-600 line-clamp-2 mb-3">
-              {contract.object}
-            </p>
-            <div className="mb-2">
-              <Badge variant="outline" className="text-xs">
-                {modalityLabels[contract.modality]}
-                {contract.modality === 'registro-preco' && contract.isCarona && ' (Carona)'}
-              </Badge>
+        <div className="flex flex-col space-y-3">
+          {/* Número do contrato e status */}
+          <div className="flex items-start justify-between">
+            <div className="flex-1">
+              <CardTitle className="text-lg font-semibold text-gray-900 mb-1">
+                Contrato {contract.number}
+              </CardTitle>
+              <p className="text-sm text-gray-600 line-clamp-2">
+                {contract.object}
+              </p>
             </div>
+            <Badge className={`${status.color} text-white ml-2 flex-shrink-0`}>
+              <StatusIcon className="w-3 h-3 mr-1" />
+              {status.label}
+            </Badge>
           </div>
-          <Badge className={`${status.color} text-white ml-2`}>
-            <StatusIcon className="w-3 h-3 mr-1" />
-            {status.label}
-          </Badge>
+          
+          {/* Modalidade */}
+          <div>
+            <Badge variant="outline" className="text-xs">
+              {modalityLabels[contract.modality]}
+              {contract.modality === 'registro-preco' && contract.isCarona && ' (Carona)'}
+            </Badge>
+          </div>
         </div>
         
+        {/* Informações principais */}
         <div className="space-y-2">
           <div className="flex items-center text-sm text-gray-600">
-            <User className="w-4 h-4 mr-2" />
-            {contract.contractor}
+            <User className="w-4 h-4 mr-2 flex-shrink-0" />
+            <span className="truncate">{contract.contractor}</span>
           </div>
           <div className="flex items-center text-sm text-gray-600">
-            <Building2 className="w-4 h-4 mr-2" />
-            {contract.managingUnit}
+            <Building2 className="w-4 h-4 mr-2 flex-shrink-0" />
+            <span className="truncate">{contract.managingUnit}</span>
           </div>
           <div className="flex items-center text-sm text-gray-600">
-            <Calendar className="w-4 h-4 mr-2" />
-            {formatDate(contract.startDate)} - {formatDate(contract.endDate)}
+            <Calendar className="w-4 h-4 mr-2 flex-shrink-0" />
+            <span className="truncate">
+              {formatDate(contract.startDate)} - {formatDate(contract.endDate)}
+            </span>
           </div>
         </div>
       </CardHeader>
 
-      <CardContent className="pt-0">
-        <div className="space-y-4">
-          {/* Valores */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <p className="text-xs text-gray-500 mb-1">Valor Atual</p>
-              <p className="font-semibold text-gray-900">
-                {formatCurrency(contract.currentValue)}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-500 mb-1">Saldo Restante</p>
-              <p className={`font-semibold ${contract.remainingBalance <= 0 ? 'text-red-600' : 'text-green-600'}`}>
-                {formatCurrency(contract.remainingBalance)}
-              </p>
-            </div>
-          </div>
-
-          {/* Barra de progresso */}
+      <CardContent className="pt-0 space-y-4">
+        {/* Valores */}
+        <div className="grid grid-cols-2 gap-3">
           <div>
-            <div className="flex justify-between text-xs text-gray-500 mb-1">
-              <span>Execução</span>
-              <span>{usagePercentage.toFixed(1)}%</span>
-            </div>
-            <div className="w-full bg-gray-200 rounded-full h-2">
-              <div 
-                className={`h-2 rounded-full transition-all duration-300 ${
-                  usagePercentage >= 90 ? 'bg-red-500' : 
-                  usagePercentage >= 70 ? 'bg-yellow-500' : 'bg-green-500'
-                }`}
-                style={{ width: `${Math.min(usagePercentage, 100)}%` }}
-              />
-            </div>
+            <p className="text-xs text-gray-500 mb-1">Valor Atual</p>
+            <p className="font-semibold text-gray-900 text-sm">
+              {formatCurrency(contract.currentValue)}
+            </p>
           </div>
-
-          {/* Alertas */}
-          {(daysRemaining <= 30 && contract.status === 'active') && (
-            <div className="flex items-center text-orange-600 text-sm bg-orange-50 p-2 rounded">
-              <AlertTriangle className="w-4 h-4 mr-2" />
-              Vence em {daysRemaining} dias
-            </div>
-          )}
-
-          {contract.remainingBalance <= 0 && (
-            <div className="flex items-center text-red-600 text-sm bg-red-50 p-2 rounded">
-              <AlertTriangle className="w-4 h-4 mr-2" />
-              Saldo esgotado
-            </div>
-          )}
+          <div>
+            <p className="text-xs text-gray-500 mb-1">Saldo Restante</p>
+            <p className={`font-semibold text-sm ${contract.remainingBalance <= 0 ? 'text-red-600' : 'text-green-600'}`}>
+              {formatCurrency(contract.remainingBalance)}
+            </p>
+          </div>
         </div>
+
+        {/* Barra de progresso */}
+        <div>
+          <div className="flex justify-between text-xs text-gray-500 mb-1">
+            <span>Execução</span>
+            <span>{usagePercentage.toFixed(1)}%</span>
+          </div>
+          <div className="w-full bg-gray-200 rounded-full h-2">
+            <div 
+              className={`h-2 rounded-full transition-all duration-300 ${
+                usagePercentage >= 90 ? 'bg-red-500' : 
+                usagePercentage >= 70 ? 'bg-yellow-500' : 'bg-green-500'
+              }`}
+              style={{ width: `${Math.min(usagePercentage, 100)}%` }}
+            />
+          </div>
+        </div>
+
+        {/* Alertas */}
+        {(daysRemaining <= 30 && contract.status === 'active') && (
+          <div className="flex items-center text-orange-600 text-sm bg-orange-50 p-2 rounded">
+            <AlertTriangle className="w-4 h-4 mr-2 flex-shrink-0" />
+            <span className="truncate">Vence em {daysRemaining} dias</span>
+          </div>
+        )}
+
+        {contract.remainingBalance <= 0 && (
+          <div className="flex items-center text-red-600 text-sm bg-red-50 p-2 rounded">
+            <AlertTriangle className="w-4 h-4 mr-2 flex-shrink-0" />
+            <span className="truncate">Saldo esgotado</span>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

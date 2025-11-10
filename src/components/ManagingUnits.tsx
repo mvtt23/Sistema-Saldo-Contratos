@@ -255,9 +255,9 @@ export function ManagingUnits({ initialUnits, refetchData, saveUnit, deleteUnit,
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <div>
-          <h2 className="text-3xl font-bold text-gray-900 mb-2">Unidades Gestoras</h2>
+          <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">Unidades Gestoras</h2>
           <p className="text-gray-600">Gerencie as secretarias e programas da prefeitura</p>
         </div>
         <Button 
@@ -265,16 +265,16 @@ export function ManagingUnits({ initialUnits, refetchData, saveUnit, deleteUnit,
             handleCancel();
             setIsFormOpen(true);
           }}
-          className="bg-blue-600 hover:bg-blue-700"
+          className="bg-blue-600 hover:bg-blue-700 w-full sm:w-auto"
         >
           <Plus className="w-4 h-4 mr-2" />
           Nova Unidade
         </Button>
       </div>
 
-      {/* Formulário da Unidade */}
+      {/* Formulário da Unidade - Layout responsivo */}
       {isFormOpen && (
-        <Card>
+        <Card className="border-blue-200 bg-blue-50">
           <CardHeader>
             <CardTitle className="flex items-center">
               <Building2 className="w-5 h-5 mr-2 text-blue-600" />
@@ -283,7 +283,7 @@ export function ManagingUnits({ initialUnits, refetchData, saveUnit, deleteUnit,
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4">
                 <div>
                   <Label htmlFor="name">Nome da Secretaria *</Label>
                   <Input
@@ -306,7 +306,7 @@ export function ManagingUnits({ initialUnits, refetchData, saveUnit, deleteUnit,
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4">
                 <div>
                   <Label htmlFor="code">Código (Opcional)</Label>
                   <Input
@@ -333,21 +333,23 @@ export function ManagingUnits({ initialUnits, refetchData, saveUnit, deleteUnit,
                 <Label>Fiscal *</Label>
                 {selectedFiscal ? (
                   <div className="bg-green-50 border border-green-200 rounded-lg p-4 mt-2">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h4 className="font-semibold text-green-800">{selectedFiscal.name}</h4>
-                        <p className="text-sm text-green-600">CPF: {selectedFiscal.cpf}</p>
-                        <p className="text-sm text-green-600">{selectedFiscal.ordinance}</p>
+                    <div className="flex flex-col space-y-2">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h4 className="font-semibold text-green-800">{selectedFiscal.name}</h4>
+                          <p className="text-sm text-green-600">CPF: {selectedFiscal.cpf}</p>
+                          <p className="text-sm text-green-600">{selectedFiscal.ordinance}</p>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={handleClearFiscal}
+                        >
+                          <X className="w-4 h-4 mr-1" />
+                          Alterar
+                        </Button>
                       </div>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={handleClearFiscal}
-                      >
-                        <X className="w-4 h-4 mr-1" />
-                        Alterar
-                      </Button>
                     </div>
                   </div>
                 ) : showFiscalForm ? (
@@ -368,7 +370,7 @@ export function ManagingUnits({ initialUnits, refetchData, saveUnit, deleteUnit,
                       </Button>
                     </div>
                     
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 gap-4">
                       <div>
                         <Label htmlFor="fiscalName">Nome Completo *</Label>
                         <Input
@@ -414,7 +416,7 @@ export function ManagingUnits({ initialUnits, refetchData, saveUnit, deleteUnit,
                   </div>
                 ) : (
                   <div className="space-y-4 mt-2">
-                    <div className="flex gap-2">
+                    <div className="flex flex-col sm:flex-row gap-2">
                       <div className="relative flex-1">
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                         <Input
@@ -463,22 +465,24 @@ export function ManagingUnits({ initialUnits, refetchData, saveUnit, deleteUnit,
                   </div>
                 )}
               </div>
-              <div className="flex justify-end space-x-4">
-                <Button type="button" variant="outline" onClick={handleCancel}>
-                  Cancelar
-                </Button>
-                <Button type="submit" className="bg-blue-600 hover:bg-blue-700">
-                  {editingUnit ? 'Atualizar' : 'Salvar'}
-                </Button>
-              </div>
+              <div className="flex flex-col sm:flex-row justify-end space-y-2
+<dyad-write path="src/components/ManagingUnits.tsx" description="ManagingUnits responsivo para mobile (continuação)">
+                  sm:space-y-0 sm:space-x-4">
+                  <Button type="button" variant="outline" onClick={handleCancel}>
+                    Cancelar
+                  </Button>
+                  <Button type="submit" className="bg-blue-600 hover:bg-blue-700">
+                    {editingUnit ? 'Atualizar' : 'Salvar'}
+                  </Button>
+                </div>
             </form>
           </CardContent>
         </Card>
       )}
 
-      {/* Formulário de Programa */}
+      {/* Formulário de Programa - Layout responsivo */}
       {isProgramFormOpen && (
-        <Card>
+        <Card className="border-blue-200 bg-blue-50">
           <CardHeader>
             <CardTitle className="flex items-center">
               <BookOpen className="w-5 h-5 mr-2 text-blue-600" />
@@ -487,7 +491,7 @@ export function ManagingUnits({ initialUnits, refetchData, saveUnit, deleteUnit,
           </CardHeader>
           <CardContent>
             <form onSubmit={handleProgramSubmit} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4">
                 <div>
                   <Label htmlFor="programName">Nome do Programa *</Label>
                   <Input
@@ -515,7 +519,7 @@ export function ManagingUnits({ initialUnits, refetchData, saveUnit, deleteUnit,
                 </div>
               </div>
 
-              <div className="flex justify-end space-x-4">
+              <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-4">
                 <Button type="button" variant="outline" onClick={handleCancelProgram}>
                   Cancelar
                 </Button>
@@ -528,51 +532,53 @@ export function ManagingUnits({ initialUnits, refetchData, saveUnit, deleteUnit,
         </Card>
       )}
 
-      {/* Lista de Unidades */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {/* Lista de Unidades - Layout responsivo */}
+      <div className="grid grid-cols-1 gap-6">
         {units.map(unit => (
           <Card key={unit.id} className="hover:shadow-lg transition-shadow">
             <CardHeader className="pb-3">
-              <div className="flex justify-between items-start">
-                <div className="flex-1">
-                  <CardTitle className="text-lg font-semibold text-gray-900 mb-1">
-                    {unit.name}
-                  </CardTitle>
-                  <p className="text-sm text-blue-600 font-medium bg-blue-50 px-2 py-1 rounded inline-block">
-                    {unit.code}
-                  </p>
+              <div className="flex flex-col space-y-3">
+                <div className="flex justify-between items-start">
+                  <div className="flex-1">
+                    <CardTitle className="text-lg font-semibold text-gray-900 mb-1">
+                      {unit.name}
+                    </CardTitle>
+                    <p className="text-sm text-blue-600 font-medium bg-blue-50 px-2 py-1 rounded inline-block">
+                      {unit.code}
+                    </p>
+                  </div>
+                  <div className="flex space-x-2 flex-wrap">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleEdit(unit)}
+                    >
+                      <Edit className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleDelete(unit.id)}
+                      className="text-red-600 hover:text-red-700"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
                 </div>
-                <div className="flex space-x-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleEdit(unit)}
-                  >
-                    <Edit className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleDelete(unit.id)}
-                    className="text-red-600 hover:text-red-700"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="pt-0">
-              <div className="space-y-3">
-                <div className="flex items-center text-sm text-gray-600">
-                  <User className="w-4 h-4 mr-2" />
-                  <div>
-                    <p className="font-medium">Secretário(a): {unit.responsible}</p>
-                    {unit.fiscalId && (() => {
-                      const fiscal = fiscals.find(f => f.id === unit.fiscalId);
-                      return fiscal ? (
-                        <p className="text-xs text-gray-500">Fiscal: {fiscal.name}</p>
-                      ) : null;
-                    })()}
+                
+                {/* Informações da unidade */}
+                <div className="space-y-2">
+                  <div className="flex items-center text-sm text-gray-600">
+                    <User className="w-4 h-4 mr-2 flex-shrink-0" />
+                    <div>
+                      <p className="font-medium">Secretário(a): {unit.responsible}</p>
+                      {unit.fiscalId && (() => {
+                        const fiscal = fiscals.find(f => f.id === unit.fiscalId);
+                        return fiscal ? (
+                          <p className="text-xs text-gray-500">Fiscal: {fiscal.name}</p>
+                        ) : null;
+                      })()}
+                    </div>
                   </div>
                 </div>
                 

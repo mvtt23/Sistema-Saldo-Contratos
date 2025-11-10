@@ -142,8 +142,6 @@ export function ContractDetails({
       }
       
       // Calcula a diferença em dias entre a nova data de fim e a data de fim atual do contrato
-      // Nota: Esta lógica é simplificada. Em um sistema real, calcular a mudança de prazo
-      // requer comparar a nova vigência com a vigência anterior do contrato.
       const diffTime = end.getTime() - currentContract.endDate.getTime();
       termChange = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
       newContractEndDate = end;
@@ -327,75 +325,77 @@ export function ContractDetails({
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* Header - Layout responsivo */}
       <Card>
         <CardHeader>
-          <div className="flex items-start justify-between">
-            <div>
-              <CardTitle className="text-2xl font-bold text-gray-900 mb-2">
-                Contrato {currentContract.number}
-              </CardTitle>
-              <p className="text-gray-600 mb-4">{currentContract.object}</p>
-            </div>
-            <div className="flex items-center space-x-2">
-              <Badge className={`${status.color} text-white`}>
-                <StatusIcon className="w-4 h-4 mr-1" />
-                {status.label}
-              </Badge>
-              {currentContract.status === 'active' && canEdit && (
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={handleRescindContract}
-                  className="text-red-600 hover:text-red-700 border-red-300"
-                >
-                  <X className="w-4 h-4 mr-1" />
-                  Rescindir
-                </Button>
-              )}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <div className="flex items-center text-gray-600">
-              <User className="w-5 h-5 mr-3" />
-              <div>
-                <p className="text-sm text-gray-500">Contratada</p>
-                <p className="font-medium">{currentContract.contractor}</p>
+          <div className="flex flex-col space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between">
+              <div className="flex-1">
+                <CardTitle className="text-xl md:text-2xl font-bold text-gray-900 mb-2">
+                  Contrato {currentContract.number}
+                </CardTitle>
+                <p className="text-gray-600 mb-4">{currentContract.object}</p>
               </div>
-            </div>
-            <div className="flex items-center text-gray-600">
-              <Building2 className="w-5 h-5 mr-3" />
-              <div>
-                <p className="text-sm text-gray-500">Unidade Gestora</p>
-                <p className="font-medium">{currentContract.managingUnit}</p>
-                {contractProgram && (
-                  <p className="text-xs text-blue-600 mt-1">{contractProgram.name}</p>
+              <div className="flex items-center space-x-2 mt-2 sm:mt-0">
+                <Badge className={`${status.color} text-white`}>
+                  <StatusIcon className="w-4 h-4 mr-1" />
+                  {status.label}
+                </Badge>
+                {currentContract.status === 'active' && canEdit && (
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={handleRescindContract}
+                    className="text-red-600 hover:text-red-700 border-red-300"
+                  >
+                    <X className="w-4 h-4 mr-1" />
+                    Rescindir
+                  </Button>
                 )}
               </div>
             </div>
-            <div className="flex items-center text-gray-600">
-              <Calendar className="w-5 h-5 mr-3" />
-              <div>
-                <p className="text-sm text-gray-500">Vigência</p>
-                <p className="font-medium">
-                  {formatDate(currentContract.startDate)} - {formatDate(currentContract.endDate)}
-                </p>
+
+            <div className="grid grid-cols-1 gap-3">
+              <div className="flex items-center text-gray-600">
+                <User className="w-5 h-5 mr-3 flex-shrink-0" />
+                <div>
+                  <p className="text-sm text-gray-500">Contratada</p>
+                  <p className="font-medium">{currentContract.contractor}</p>
+                </div>
+              </div>
+              <div className="flex items-center text-gray-600">
+                <Building2 className="w-5 h-5 mr-3 flex-shrink-0" />
+                <div>
+                  <p className="text-sm text-gray-500">Unidade Gestora</p>
+                  <p className="font-medium">{currentContract.managingUnit}</p>
+                  {contractProgram && (
+                    <p className="text-xs text-blue-600 mt-1">{contractProgram.name}</p>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center text-gray-600">
+                <Calendar className="w-5 h-5 mr-3 flex-shrink-0" />
+                <div>
+                  <p className="text-sm text-gray-500">Vigência</p>
+                  <p className="font-medium">
+                    {formatDate(currentContract.startDate)} - {formatDate(currentContract.endDate)}
+                  </p>
+                </div>
               </div>
             </div>
           </div>
         </CardHeader>
       </Card>
 
-      {/* Valores e Execução */}
+      {/* Valores e Execução - Layout responsivo */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
-          <CardContent className="p-6">
+          <CardContent className="p-4">
             <div className="flex items-center">
-              <DollarSign className="w-8 h-8 text-blue-500 mr-3" />
+              <DollarSign className="w-6 h-6 text-blue-500 mr-3" />
               <div>
-                <p className="text-sm text-gray-500">Valor Original</p>
-                <p className="text-xl font-bold text-gray-900">
+                <p className="text-xs text-gray-500">Valor Original</p>
+                <p className="text-lg font-bold text-gray-900">
                   {formatCurrency(currentContract.originalValue)}
                 </p>
               </div>
@@ -404,12 +404,12 @@ export function ContractDetails({
         </Card>
 
         <Card>
-          <CardContent className="p-6">
+          <CardContent className="p-4">
             <div className="flex items-center">
-              <TrendingUp className="w-8 h-8 text-green-500 mr-3" />
+              <TrendingUp className="w-6 h-6 text-green-500 mr-3" />
               <div>
-                <p className="text-sm text-gray-500">Valor Atual</p>
-                <p className="text-xl font-bold text-gray-900">
+                <p className="text-xs text-gray-500">Valor Atual</p>
+                <p className="text-lg font-bold text-gray-900">
                   {formatCurrency(currentContract.currentValue)}
                 </p>
               </div>
@@ -418,12 +418,12 @@ export function ContractDetails({
         </Card>
 
         <Card>
-          <CardContent className="p-6">
+          <CardContent className="p-4">
             <div className="flex items-center">
-              <FileText className="w-8 h-8 text-orange-500 mr-3" />
+              <FileText className="w-6 h-6 text-orange-500 mr-3" />
               <div>
-                <p className="text-sm text-gray-500">Valor Utilizado</p>
-                <p className="text-xl font-bold text-gray-900">
+                <p className="text-xs text-gray-500">Valor Utilizado</p>
+                <p className="text-lg font-bold text-gray-900">
                   {formatCurrency(currentContract.usedValue)}
                 </p>
               </div>
@@ -432,12 +432,12 @@ export function ContractDetails({
         </Card>
 
         <Card>
-          <CardContent className="p-6">
+          <CardContent className="p-4">
             <div className="flex items-center">
-              <DollarSign className={`w-8 h-8 mr-3 ${currentContract.remainingBalance <= 0 ? 'text-red-500' : 'text-green-500'}`} />
+              <DollarSign className={`w-6 h-6 mr-3 ${currentContract.remainingBalance <= 0 ? 'text-red-500' : 'text-green-500'}`} />
               <div>
-                <p className="text-sm text-gray-500">Saldo Restante</p>
-                <p className={`text-xl font-bold ${currentContract.remainingBalance <= 0 ? 'text-red-600' : 'text-green-600'}`}>
+                <p className="text-xs text-gray-500">Saldo Restante</p>
+                <p className={`text-lg font-bold ${currentContract.remainingBalance <= 0 ? 'text-red-600' : 'text-green-600'}`}>
                   {formatCurrency(currentContract.remainingBalance)}
                 </p>
               </div>
@@ -446,17 +446,17 @@ export function ContractDetails({
         </Card>
       </div>
 
-      {/* Barra de Execução */}
+      {/* Barra de Execução - Layout responsivo */}
       <Card>
-        <CardContent className="p-6">
+        <CardContent className="p-4">
           <div className="mb-4">
             <div className="flex justify-between items-center mb-2">
               <h3 className="text-lg font-semibold">Execução do Contrato</h3>
-              <span className="text-2xl font-bold text-gray-900">{usagePercentage.toFixed(1)}%</span>
+              <span className="text-xl font-bold text-gray-900">{usagePercentage.toFixed(1)}%</span>
             </div>
-            <div className="w-full bg-gray-200 rounded-full h-4">
+            <div className="w-full bg-gray-200 rounded-full h-3">
               <div 
-                className={`h-4 rounded-full transition-all duration-500 ${
+                className={`h-3 rounded-full transition-all duration-500 ${
                   usagePercentage >= 90 ? 'bg-red-500' : 
                   usagePercentage >= 70 ? 'bg-yellow-500' : 'bg-green-500'
                 }`}
@@ -467,7 +467,7 @@ export function ContractDetails({
         </CardContent>
       </Card>
 
-      {/* Tabs com detalhes */}
+      {/* Tabs com detalhes - Layout responsivo */}
       <Tabs defaultValue="additives" className="w-full">
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="additives">Aditivos ({currentContract.additives.length})</TabsTrigger>
@@ -491,7 +491,7 @@ export function ContractDetails({
             )}
           </div>
 
-          {/* Formulário de Novo Aditivo */}
+          {/* Formulário de Novo Aditivo - Layout responsivo */}
           {isAddingAdditive && (
             <Card className="border-blue-200 bg-blue-50">
               <CardHeader>
@@ -500,7 +500,7 @@ export function ContractDetails({
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 gap-4">
                   <div>
                     <Label>Tipo de Aditivo</Label>
                     <div className="space-y-2 mt-2">
@@ -578,7 +578,7 @@ export function ContractDetails({
                 </div>
 
                 {(additiveForm.type === 'term' || additiveForm.type === 'both') && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 gap-4">
                     <div>
                       <Label htmlFor="newStartDate">Nova Data de Início da Vigência</Label>
                       <Input
@@ -602,7 +602,7 @@ export function ContractDetails({
                   </div>
                 )}
 
-                <div className="flex justify-end space-x-2">
+                <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-2">
                   <Button variant="outline" onClick={resetAdditiveForm}>
                     Cancelar
                   </Button>
@@ -615,7 +615,7 @@ export function ContractDetails({
             </Card>
           )}
 
-          {/* Lista de Aditivos */}
+          {/* Lista de Aditivos - Layout responsivo */}
           {currentContract.additives.length === 0 ? (
             <Card>
               <CardContent className="p-6 text-center text-gray-500">
@@ -625,7 +625,7 @@ export function ContractDetails({
           ) : (
             currentContract.additives.map((additive) => (
               <Card key={additive.id}>
-                <CardContent className="p-6">
+                <CardContent className="p-4">
                   <div className="flex justify-between items-start mb-4">
                     <div>
                       <h4 className="font-semibold text-gray-900 mb-2">
@@ -646,11 +646,10 @@ export function ContractDetails({
                           <Edit className="w-4 h-4" />
                         </Button>
                       )}
-                      {/* Não implementamos a exclusão de aditivos, pois isso exigiria um recálculo complexo do histórico do contrato. */}
                     </div>
                   </div>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 gap-2">
                     {additive.valueChange !== 0 && (
                       <div className="flex items-center">
                         <TrendingUp className="w-4 h-4 text-green-500 mr-2" />
@@ -691,7 +690,7 @@ export function ContractDetails({
             )}
           </div>
 
-          {/* Formulário de Nova Nota Fiscal */}
+          {/* Formulário de Nova Nota Fiscal - Layout responsivo */}
           {isAddingInvoice && (
             <Card className="border-blue-200 bg-blue-50">
               <CardHeader>
@@ -700,7 +699,7 @@ export function ContractDetails({
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 gap-4">
                   <div>
                     <Label htmlFor="invoiceNumber">Número da Nota Fiscal</Label>
                     <Input
@@ -735,7 +734,7 @@ export function ContractDetails({
                   </div>
                 </div>
 
-                <div className="flex justify-end space-x-2">
+                <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-2">
                   <Button variant="outline" onClick={resetInvoiceForm}>
                     Cancelar
                   </Button>
@@ -757,11 +756,11 @@ export function ContractDetails({
           ) : (
             currentContract.invoices.map((invoice) => (
               <Card key={invoice.id}>
-                <CardContent className="p-6">
+                <CardContent className="p-4">
                   <div className="flex justify-between items-start mb-4">
                     <div className="flex-1">
                       <h4 className="font-semibold text-gray-900 mb-2">Nota Fiscal {invoice.number}</h4>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-600">
+                      <div className="grid grid-cols-1 gap-2 text-sm text-gray-600">
                         <div>
                           <span className="text-gray-500">Valor:</span>
                           <span className="font-medium ml-2">{formatCurrency(invoice.value)}</span>
