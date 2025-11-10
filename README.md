@@ -1,73 +1,89 @@
-# Welcome to your Lovable project
+# Sistema de Gestão de Contratos da Prefeitura
 
-## Project info
+Este é um sistema web para gestão de contratos da prefeitura, construído com React, TypeScript e Supabase.
 
-**URL**: https://lovable.dev/projects/71a2c4a4-5f8e-490a-a7b0-3f1dd1d764c4
+## Tecnologias Utilizadas
 
-## How can I edit this code?
+- **Frontend**: React 18 com TypeScript
+- **UI Components**: shadcn/ui com Tailwind CSS
+- **Database**: Supabase PostgreSQL
+- **Autenticação**: Supabase Auth
+- **Build Tool**: Vite
 
-There are several ways of editing your application.
+## Como Rodar Localmente
 
-**Use Lovable**
+1. Clone o repositório
+2. Instale as dependências:
+   ```bash
+   npm install
+   ```
+3. Configure as variáveis de ambiente (crie um arquivo `.env.local`):
+   ```env
+   VITE_SUPABASE_URL=seu_url_supabase
+   VITE_SUPABASE_ANON_KEY=sua_chave_anon_supabase
+   ```
+4. Inicie o servidor de desenvolvimento:
+   ```bash
+   npm run dev
+   ```
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/71a2c4a4-5f8e-490a-a7b0-3f1dd1d764c4) and start prompting.
+## Deploy no Vercel
 
-Changes made via Lovable will be committed automatically to this repo.
+### Pré-requisitos
 
-**Use your preferred IDE**
+1. Conta no [Vercel](https://vercel.com)
+2. Conta no [Supabase](https://supabase.com)
+3. Repositório do projeto no GitHub
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+### Passo a Passo
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+1. **Configure o Supabase**:
+   - Crie um novo projeto no Supabase
+   - Copie o URL e a chave anon do projeto
+   - Configure as variáveis de ambiente no Vercel
 
-Follow these steps:
+2. **Configure o Vercel**:
+   - Importe seu repositório para o Vercel
+   - Configure as variáveis de ambiente:
+     ```
+     VITE_SUPABASE_URL=https://seu-projeto.supabase.co
+     VITE_SUPABASE_ANON_KEY=sua-chave-anon
+     ```
+   - Deploy automático será ativado
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+3. **Configurações Adicionais**:
+   - Build Command: `npm run build`
+   - Output Directory: `dist`
+   - Install Command: `npm install`
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+### Variáveis de Ambiente Necessárias
 
-# Step 3: Install the necessary dependencies.
-npm i
+No Vercel, configure estas variáveis de ambiente:
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+- `VITE_SUPABASE_URL`: URL do seu projeto Supabase
+- `VITE_SUPABASE_ANON_KEY`: Chave pública do seu projeto Supabase
+
+### Estrutura do Projeto
+
+```
+src/
+├── components/          # Componentes React
+├── contexts/           # Contextos React
+├── hooks/              # Custom hooks
+├── lib/                # Configurações e utilitários
+├── types/              # Tipos TypeScript
+└── App.tsx             # Componente principal
 ```
 
-**Edit a file directly in GitHub**
+## Funcionalidades
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+- ✅ Gestão de contratos
+- ✅ Cadastro de empresas
+- ✅ Gestão de unidades gestoras
+- ✅ Relatórios em PDF
+- ✅ Autenticação de usuários
+- ✅ Controle de permissões
 
-**Use GitHub Codespaces**
+## Licença
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/71a2c4a4-5f8e-490a-a7b0-3f1dd1d764c4) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+MIT License
