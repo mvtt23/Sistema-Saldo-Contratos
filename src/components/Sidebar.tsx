@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { PageType } from "@/App";
+import { useState } from "react"; // Importação adicionada
 
 interface SidebarProps {
   activePage: PageType;
