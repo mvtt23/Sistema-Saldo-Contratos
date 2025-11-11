@@ -540,7 +540,8 @@ export function ContractForm({ onContractSave, managingUnits, companies, saveCom
                         <SelectItem key={program.id} value={program.name}>{program.name}</SelectItem>
                       ))
                     ) : (
-                      <SelectItem value="" disabled>Nenhum programa disponível</SelectItem>
+                      // Corrigido: Usar um valor não vazio para o item desabilitado
+                      <SelectItem value="placeholder-program" disabled>Nenhum programa disponível</SelectItem>
                     )}
                   </SelectContent>
                 </Select>
