@@ -442,19 +442,20 @@ export function ManagingUnits({ initialUnits, refetchData, saveUnit, deleteUnit,
                     
                     {showFiscalSearch && fiscalSearchTerm && (
                       <div className="max-h-48 overflow-y-auto border rounded-lg bg-white shadow-lg">
-                        {filteredFiscals.map(fiscal => (
-                          <div
-                            key={fiscal.id}
-                            className="p-3 hover:bg-gray-50 cursor-pointer border-b last:border-b-0"
-                            onClick={() => handleFiscalSelect(fiscal)}
-                          >
-                            <div className="font-medium">{fiscal.name}</div>
-                            <div className="text-sm text-gray-600">
-                              {fiscal.cpf} - {fiscal.ordinance}
+                        {filteredFiscals.length > 0 ? (
+                          filteredFiscals.map(fiscal => (
+                            <div
+                              key={fiscal.id}
+                              className="p-3 hover:bg-gray-50 cursor-pointer border-b last:border-b-0"
+                              onClick={() => handleFiscalSelect(fiscal)}
+                            >
+                              <div className="font-medium">{fiscal.name}</div>
+                              <div className="text-sm text-gray-600">
+                                {fiscal.cpf} - {fiscal.ordinance}
+                              </div>
                             </div>
-                          </div>
-                        ))}
-                        {filteredFiscals.length === 0 && (
+                          ))
+                        ) : (
                           <div className="p-3 text-gray-500 text-center">
                             Nenhum fiscal encontrado
                           </div>
