@@ -18,8 +18,8 @@ import { Contract, ManagingUnit } from "@/types/contract";
 
 interface DashboardProps {
   onFilteredView: (filters: { status?: string; modality?: string; unit?: string }) => void;
-  contracts: Contract[]; // Agora é obrigatório
-  managingUnits: ManagingUnit[]; // Adicionando managingUnits como prop
+  contracts: Contract[];
+  managingUnits: ManagingUnit[];
   onContractSelect?: (contract: Contract) => void;
 }
 
@@ -106,35 +106,38 @@ export function Dashboard({ onFilteredView, contracts, managingUnits, onContract
   };
 
   return (
-    <div className="space-y-8">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div className="space-y-6">
+      {/* Header responsivo */}
+      <div className="flex flex-col space-y-4">
         <div>
-          <h2 className="text-3xl font-bold text-gray-900 mb-2">Visão Geral</h2>
+          <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">Visão Geral</h2>
           <p className="text-gray-600">Visão geral dos contratos da prefeitura municipal</p>
         </div>
         
-        {/* Filtro por Secretaria */}
-        <div className="flex items-center space-x-3">
-          <Filter className="w-5 h-5 text-gray-500" />
-          <Select value={selectedUnit} onValueChange={setSelectedUnit}>
-            <SelectTrigger className="w-64">
-              <Building2 className="w-4 h-4 mr-2" />
-              <SelectValue placeholder="Filtrar por secretaria" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todas as Secretarias</SelectItem>
-              {managingUnits.map(unit => (
-                <SelectItem key={unit.id} value={unit.name}>{unit.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        {/* Filtro por Secretaria - Layout responsivo */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex items-center space-x-3 w-full sm:w-auto">
+            <Filter className="w-5 h-5 text-gray-500 flex-shrink-0" />
+            <Select value={selectedUnit} onValueChange={setSelectedUnit} className="w-full">
+              <SelectTrigger className="w-full">
+                <Building2 className="w-4 h-4 mr-2 flex-shrink-0" />
+                <SelectValue placeholder="Filtrar por secretaria" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas as Secretarias</SelectItem>
+                {managingUnits.map(unit => (
+                  <SelectItem key={unit.id} value={unit.name}>{unit.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       </div>
 
-      {/* Cards de estatísticas principais */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      {/* Cards de estatísticas principais - Layout responsivo */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card 
-          className="border-l-4 border-l-green-500 cursor-pointer hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 bg-gradient-to-br from-green-50 to-white" 
+          className="border-l-4 border-l-green-500 cursor-pointer hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 bg-gradient-to-br from-green-50 to-white" 
           onClick={() => {
             const filters: any = { status: 'active' };
             if (selectedUnit !== 'all') filters.unit = selectedUnit;
@@ -150,12 +153,12 @@ export function Dashboard({ onFilteredView, contracts, managingUnits, onContract
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-4xl font-bold text-green-700 mb-2">{activeContracts}</div>
+            <div className="text-2xl md:text-4xl font-bold text-green-700 mb-2">{activeContracts}</div>
             <p className="text-sm text-gray-500 mb-3">
               de {totalContracts} contratos totais
             </p>
             <div className="space-y-1">
-              {Object.entries(activeContractsByModality).slice(0, 3).map(([modality, count]) => (
+              {Object.entries(activeContractsByModality).slice(0, 2).map(([modality, count]) => (
                 <div 
                   key={modality}
                   className="flex justify-between text-xs font-medium text-gray-700 hover:text-green-600 hover:bg-green-50 cursor-pointer px-2 py-1 rounded transition-colors"
@@ -175,7 +178,7 @@ export function Dashboard({ onFilteredView, contracts, managingUnits, onContract
         </Card>
 
         <Card 
-          className="border-l-4 border-l-orange-500 cursor-pointer hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 bg-gradient-to-br from-orange-50 to-white"
+          className="border-l-4 border-l-orange-500 cursor-pointer hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 bg-gradient-to-br from-orange-50 to-white"
           onClick={() => {
             const filters: any = { status: 'active' };
             if (selectedUnit !== 'all') filters.unit = selectedUnit;
@@ -191,13 +194,13 @@ export function Dashboard({ onFilteredView, contracts, managingUnits, onContract
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-4xl font-bold text-orange-700 mb-2">{contractsNearExpiry.length}</div>
+            <div className="text-2xl md:text-4xl font-bold text-orange-700 mb-2">{contractsNearExpiry.length}</div>
             <p className="text-sm text-gray-500 mb-3">
               vencem em até 30 dias
             </p>
             {contractsNearExpiry.length > 0 && (
-              <div className="space-y-1">
-                {contractsNearExpiry.slice(0, 5).map((contract, index) => {
+              <div className="space-y-1 max-h-32 overflow-y-auto">
+                {contractsNearExpiry.slice(0, 3).map((contract, index) => {
                   const daysRemaining = Math.ceil((contract.endDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
                   return (
                     <div 
@@ -208,14 +211,14 @@ export function Dashboard({ onFilteredView, contracts, managingUnits, onContract
                         handleContractClick(contract.number);
                       }}
                     >
-                      <span className="font-semibold text-orange-800 hover:underline">{contract.number}</span>
+                      <span className="font-semibold text-orange-800 hover:underline truncate">{contract.number}</span>
                       <span className="text-orange-600">{daysRemaining}d</span>
                     </div>
                   );
                 })}
-                {contractsNearExpiry.length > 5 && (
+                {contractsNearExpiry.length > 3 && (
                   <div className="text-xs text-orange-600 text-center py-1 cursor-pointer hover:bg-orange-50 rounded">
-                    ...ver mais {contractsNearExpiry.length - 5}
+                    ...ver mais {contractsNearExpiry.length - 3}
                   </div>
                 )}
               </div>
@@ -224,7 +227,7 @@ export function Dashboard({ onFilteredView, contracts, managingUnits, onContract
         </Card>
 
         <Card 
-          className="border-l-4 border-l-red-500 cursor-pointer hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 bg-gradient-to-br from-red-50 to-white"
+          className="border-l-4 border-l-red-500 cursor-pointer hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 bg-gradient-to-br from-red-50 to-white"
           onClick={() => {
             const filters: any = { status: 'active' };
             if (selectedUnit !== 'all') filters.unit = selectedUnit;
@@ -240,13 +243,13 @@ export function Dashboard({ onFilteredView, contracts, managingUnits, onContract
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-4xl font-bold text-red-700 mb-2">{contractsLowBalance.length}</div>
+            <div className="text-2xl md:text-4xl font-bold text-red-700 mb-2">{contractsLowBalance.length}</div>
             <p className="text-sm text-gray-500 mb-3">
               contratos com saldo baixo
             </p>
             {contractsLowBalance.length > 0 && (
-              <div className="space-y-1">
-                {contractsLowBalance.slice(0, 5).map((contract) => {
+              <div className="space-y-1 max-h-32 overflow-y-auto">
+                {contractsLowBalance.slice(0, 3).map((contract) => {
                   const remainingPercentage = (contract.remainingBalance / contract.currentValue) * 100;
                   return (
                     <div 
@@ -257,14 +260,14 @@ export function Dashboard({ onFilteredView, contracts, managingUnits, onContract
                         handleContractClick(contract.number);
                       }}
                     >
-                      <span className="font-semibold text-red-800 hover:underline">{contract.number}</span>
+                      <span className="font-semibold text-red-800 hover:underline truncate">{contract.number}</span>
                       <span className="text-red-600">{remainingPercentage.toFixed(1)}%</span>
                     </div>
                   );
                 })}
-                {contractsLowBalance.length > 5 && (
+                {contractsLowBalance.length > 3 && (
                   <div className="text-xs text-red-600 text-center py-1 cursor-pointer hover:bg-red-50 rounded">
-                    ...ver mais {contractsLowBalance.length - 5}
+                    ...ver mais {contractsLowBalance.length - 3}
                   </div>
                 )}
               </div>
@@ -273,7 +276,7 @@ export function Dashboard({ onFilteredView, contracts, managingUnits, onContract
         </Card>
 
         <Card 
-          className="border-l-4 border-l-gray-500 cursor-pointer hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 bg-gradient-to-br from-gray-50 to-white"
+          className="border-l-4 border-l-gray-500 cursor-pointer hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 bg-gradient-to-br from-gray-50 to-white"
           onClick={() => {
             const filters: any = { status: 'suspended' };
             if (selectedUnit !== 'all') filters.unit = selectedUnit;
@@ -289,7 +292,7 @@ export function Dashboard({ onFilteredView, contracts, managingUnits, onContract
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-4xl font-bold text-gray-700 mb-2">{rescindedContracts}</div>
+            <div className="text-2xl md:text-4xl font-bold text-gray-700 mb-2">{rescindedContracts}</div>
             <p className="text-sm text-gray-500">
               contratos rescindidos
             </p>
@@ -297,13 +300,13 @@ export function Dashboard({ onFilteredView, contracts, managingUnits, onContract
         </Card>
       </div>
 
-      {/* Gráfico de Contratos Ativos por Modalidade */}
+      {/* Gráfico de Contratos Ativos por Modalidade - Layout responsivo */}
       <Card className="shadow-lg">
         <CardHeader className="text-center pb-6">
-          <CardTitle className="text-3xl font-bold text-gray-800 mb-4">
+          <CardTitle className="text-xl md:text-3xl font-bold text-gray-800 mb-4">
             Contratos Ativos por Modalidade
           </CardTitle>
-          <p className="text-gray-600 text-lg">
+          <p className="text-gray-600 text-base md:text-lg">
             Distribuição dos {activeContracts} contratos ativos por tipo de licitação
             {selectedUnit !== 'all' && (
               <span className="block text-blue-600 font-semibold mt-1">
@@ -314,9 +317,9 @@ export function Dashboard({ onFilteredView, contracts, managingUnits, onContract
         </CardHeader>
         <CardContent>
           {pieChartData.length > 0 ? (
-            <div className="flex flex-col xl:flex-row items-center justify-center gap-16 py-8">
-              {/* Donut Chart */}
-              <div className="h-[500px] w-[500px] flex-shrink-0 relative">
+            <div className="flex flex-col xl:flex-row items-center justify-center gap-8 py-8">
+              {/* Donut Chart - Layout responsivo */}
+              <div className="h-[300px] w-[300px] flex-shrink-0 relative">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
@@ -356,15 +359,15 @@ export function Dashboard({ onFilteredView, contracts, managingUnits, onContract
                           const total = pieChartData.reduce((sum, entry) => sum + entry.value, 0);
                           const percent = ((data.value / total) * 100).toFixed(1);
                           return (
-                            <div className="bg-white p-6 border-0 rounded-2xl shadow-2xl border border-gray-100 backdrop-blur-sm">
+                            <div className="bg-white p-4 border-0 rounded-2xl shadow-2xl border border-gray-100 backdrop-blur-sm">
                               <div className="flex items-center mb-3">
                                 <div 
-                                  className="w-5 h-5 rounded-full mr-3 shadow-sm"
+                                  className="w-4 h-4 rounded-full mr-3 shadow-sm"
                                   style={{ backgroundColor: COLORS[pieChartData.findIndex(item => item.name === data.payload.name) % COLORS.length] }}
                                 />
-                                <p className="font-bold text-gray-800 text-xl">{data.payload.name}</p>
+                                <p className="font-bold text-gray-800 text-lg">{data.payload.name}</p>
                               </div>
-                              <p className="text-3xl font-bold text-blue-600 mb-2">
+                              <p className="text-2xl font-bold text-blue-600 mb-2">
                                 {data.value} contratos
                               </p>
                               <p className="text-base text-gray-600 font-medium">
@@ -384,19 +387,19 @@ export function Dashboard({ onFilteredView, contracts, managingUnits, onContract
                 {/* Centro do donut com informação total */}
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                   <div className="text-center">
-                    <p className="text-6xl font-bold text-gray-800 mb-3">
+                    <p className="text-4xl md:text-6xl font-bold text-gray-800 mb-2">
                       {activeContracts}
                     </p>
-                    <p className="text-xl text-gray-600 font-semibold">
+                    <p className="text-lg md:text-xl text-gray-600 font-semibold">
                       Contratos Ativos
                     </p>
                   </div>
                 </div>
               </div>
               
-              {/* Legenda Melhorada */}
-              <div className="flex flex-col space-y-6 xl:ml-12 w-full xl:w-auto max-w-md">
-                <h4 className="text-2xl font-bold text-gray-800 mb-2 text-center xl:text-left">
+              {/* Legenda Melhorada - Layout responsivo */}
+              <div className="flex flex-col space-y-4 xl:ml-8 w-full xl:w-auto max-w-md">
+                <h4 className="text-xl md:text-2xl font-bold text-gray-800 mb-2 text-center xl:text-left">
                   Modalidades de Licitação
                 </h4>
                 {pieChartData.map((entry, index) => {
@@ -405,7 +408,7 @@ export function Dashboard({ onFilteredView, contracts, managingUnits, onContract
                   return (
                     <div 
                       key={entry.name}
-                      className={`flex items-center space-x-5 cursor-pointer p-6 rounded-2xl transition-all duration-300 border-2 ${
+                      className={`flex items-center space-x-4 cursor-pointer p-4 rounded-2xl transition-all duration-300 border-2 ${
                         hoveredIndex === index 
                           ? 'bg-blue-50 border-blue-200 shadow-xl transform scale-105' 
                           : 'bg-gray-50 border-transparent hover:bg-gray-100 hover:shadow-lg'
@@ -415,18 +418,18 @@ export function Dashboard({ onFilteredView, contracts, managingUnits, onContract
                       onMouseLeave={() => setHoveredIndex(null)}
                     >
                       <div 
-                        className="w-8 h-8 rounded-full flex-shrink-0 shadow-lg"
+                        className="w-6 h-6 rounded-full flex-shrink-0 shadow-lg"
                         style={{ backgroundColor: COLORS[index % COLORS.length] }}
                       />
                       <div className="flex-1">
-                        <p className="font-bold text-gray-800 text-xl leading-tight mb-2">
+                        <p className="font-bold text-gray-800 text-lg leading-tight mb-1">
                           {entry.name}
                         </p>
-                        <div className="flex items-baseline space-x-3">
-                          <span className="text-4xl font-bold text-blue-600">
+                        <div className="flex items-baseline space-x-2">
+                          <span className="text-2xl md:text-4xl font-bold text-blue-600">
                             {entry.value}
                           </span>
-                          <span className="text-base text-gray-500 font-medium">
+                          <span className="text-sm md:text-base text-gray-500 font-medium">
                             contratos ({percent}%)
                           </span>
                         </div>
@@ -450,28 +453,28 @@ export function Dashboard({ onFilteredView, contracts, managingUnits, onContract
             </div>
           )}
           
-          {/* Estatísticas resumidas */}
+          {/* Estatísticas resumidas - Layout responsivo */}
           {pieChartData.length > 0 && (
-            <div className="mt-12 pt-8 border-t border-gray-200">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
-                <div className="bg-blue-50 p-6 rounded-xl shadow-sm">
-                  <p className="text-4xl font-bold text-blue-600 mb-2">{activeContracts}</p>
+            <div className="mt-8 md:mt-12 pt-6 md:pt-8 border-t border-gray-200">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                <div className="bg-blue-50 p-4 rounded-xl shadow-sm">
+                  <p className="text-2xl md:text-4xl font-bold text-blue-600 mb-2">{activeContracts}</p>
                   <p className="text-base text-gray-600 font-semibold">Total Ativo</p>
                 </div>
-                <div className="bg-green-50 p-6 rounded-xl shadow-sm">
-                  <p className="text-4xl font-bold text-orange-600 mb-2">
+                <div className="bg-green-50 p-4 rounded-xl shadow-sm">
+                  <p className="text-xl md:text-2xl font-bold text-orange-600 mb-2">
                     {activeContracts > 0 ? Math.round(filteredContracts.filter(c => c.status === 'active').reduce((sum, c) => sum + ((c.usedValue / c.currentValue) * 100), 0) / activeContracts) : 0}%
                   </p>
                   <p className="text-base text-gray-600 font-semibold">Execução Média</p>
                 </div>
-                <div className="bg-orange-50 p-6 rounded-xl shadow-sm">
-                  <p className="text-xl md:text-2xl font-bold text-green-600 mb-2">
+                <div className="bg-orange-50 p-4 rounded-xl shadow-sm">
+                  <p className="text-lg md:text-2xl font-bold text-green-600 mb-2">
                     {formatCurrency(filteredContracts.filter(c => c.status === 'active').reduce((sum, c) => sum + c.currentValue, 0))}
                   </p>
                   <p className="text-base text-gray-600 font-semibold">Valor Total</p>
                 </div>
-                <div className="bg-purple-50 p-6 rounded-xl shadow-sm">
-                  <p className="text-4xl font-bold text-purple-600 mb-2">{pieChartData.length}</p>
+                <div className="bg-purple-50 p-4 rounded-xl shadow-sm">
+                  <p className="text-2xl md:text-4xl font-bold text-purple-600 mb-2">{pieChartData.length}</p>
                   <p className="text-base text-gray-600 font-semibold">Modalidades</p>
                 </div>
               </div>

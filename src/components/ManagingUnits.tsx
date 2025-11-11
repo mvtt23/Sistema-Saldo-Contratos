@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ManagingUnit, Program } from "@/types/contract";
-import { Building2, Plus, CreditCard as Edit, Trash2, BookOpen, User, Search, X } from "lucide-react";
+import { Building2, Plus, Edit, Trash2, BookOpen, User, Search, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface Fiscal {
@@ -257,7 +257,7 @@ export function ManagingUnits({ initialUnits, refetchData, saveUnit, deleteUnit,
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <div>
-          <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">Unidades Gestoras</h2>
+          <h2 className="text-xl md:text-2xl lg:text-3xl font-bold text-gray-900 mb-2">Unidades Gestoras</h2>
           <p className="text-gray-600">Gerencie as secretarias e programas da prefeitura</p>
         </div>
         <Button 
@@ -276,7 +276,7 @@ export function ManagingUnits({ initialUnits, refetchData, saveUnit, deleteUnit,
       {isFormOpen && (
         <Card className="border-blue-200 bg-blue-50">
           <CardHeader>
-            <CardTitle className="flex items-center">
+            <CardTitle className="flex items-center text-lg md:text-xl">
               <Building2 className="w-5 h-5 mr-2 text-blue-600" />
               {editingUnit ? 'Editar Unidade Gestora' : 'Nova Unidade Gestora'}
             </CardTitle>
@@ -328,7 +328,7 @@ export function ManagingUnits({ initialUnits, refetchData, saveUnit, deleteUnit,
                 </div>
               </div>
 
-              {/* Seleção/Cadastro do Fiscal */}
+              {/* Seleção/Cadastro do Fiscal - Layout responsivo */}
               <div>
                 <Label>Fiscal *</Label>
                 {selectedFiscal ? (
@@ -482,7 +482,7 @@ export function ManagingUnits({ initialUnits, refetchData, saveUnit, deleteUnit,
       {isProgramFormOpen && (
         <Card className="border-blue-200 bg-blue-50">
           <CardHeader>
-            <CardTitle className="flex items-center">
+            <CardTitle className="flex items-center text-lg md:text-xl">
               <BookOpen className="w-5 h-5 mr-2 text-blue-600" />
               {editingProgram ? 'Editar Programa' : 'Novo Programa'}
             </CardTitle>
@@ -639,7 +639,7 @@ export function ManagingUnits({ initialUnits, refetchData, saveUnit, deleteUnit,
 
       {units.length === 0 && (
         <Card>
-          <CardContent className="p-12 text-center">
+          <CardContent className="p-8 md:p-12 text-center">
             <Building2 className="w-12 h-12 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">
               Nenhuma unidade gestora cadastrada

@@ -102,11 +102,11 @@ export function Reports({ contracts, onContractSelect, managingUnits }: ReportsP
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">Relatórios</h2>
+        <h2 className="text-xl md:text-2xl lg:text-3xl font-bold text-gray-900 mb-2">Relatórios</h2>
         <p className="text-gray-600">Gere relatórios detalhados sobre contratos e gestão</p>
       </div>
 
-      {/* Filtros do relatório */}
+      {/* Filtros do relatório - Layout responsivo */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center">
@@ -192,7 +192,7 @@ export function Reports({ contracts, onContractSelect, managingUnits }: ReportsP
         </CardContent>
       </Card>
 
-      {/* Resumo dos dados */}
+      {/* Resumo dos dados - Layout responsivo */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardContent className="p-4">
@@ -243,7 +243,7 @@ export function Reports({ contracts, onContractSelect, managingUnits }: ReportsP
         </Card>
       </div>
 
-      {/* Gráficos e tabelas */}
+      {/* Gráficos e tabelas - Layout responsivo */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Contratos por Status */}
         <Card>
@@ -302,7 +302,7 @@ export function Reports({ contracts, onContractSelect, managingUnits }: ReportsP
         </Card>
       </div>
 
-      {/* Tabela detalhada */}
+      {/* Tabela detalhada - Layout responsivo */}
       {selectedType === 'detailed' && (
         <Card>
           <CardHeader>
@@ -350,10 +350,10 @@ export function Reports({ contracts, onContractSelect, managingUnits }: ReportsP
         </Card>
       )}
 
-      {/* Mensagem quando não há contratos */}
+      {/* Mensagem quando não há contratos - Layout responsivo */}
       {totalContracts === 0 && (
         <Card>
-          <CardContent className="p-12 text-center">
+          <CardContent className="p-8 md:p-12 text-center">
             <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">
               Nenhum contrato encontrado

@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Contract } from "@/types/contract";
 import { formatCurrency, formatDate, calculateDaysRemaining } from "@/lib/utils";
 import { ContractCard } from "./ContractCard";
-import { Search, Filter, Calendar, Building2 } from "lucide-react";
+import { Search, Filter, Calendar, Building2, ChevronDown, ChevronUp } from "lucide-react";
 
 interface ContractListProps {
   contracts: Contract[];
@@ -42,6 +42,7 @@ export function ContractList({ contracts, onContractSelect, initialFilters = {} 
   const [searchTerm, setSearchTerm] = useState('');
   const [startDateFilter, setStartDateFilter] = useState('');
   const [endDateFilter, setEndDateFilter] = useState('');
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
 
   // Extrair valores únicos para os filtros
   const uniqueModalities = useMemo(() => {
@@ -114,16 +115,26 @@ export function ContractList({ contracts, onContractSelect, initialFilters = {} 
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">Consulta de Contratos</h2>
+        <h2 className="text-xl md:text-2xl lg:text-3xl font-bold text-gray-900 mb-2">Consulta de Contratos</h2>
         <p className="text-gray-600">Busque e visualize todos os contratos cadastrados</p>
       </div>
 
       {/* Barra de busca e filtros - Layout responsivo */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center">
-            <Filter className="w-5 h-5 mr-2 text-blue-600" />
-            Filtros de Busca
+          <CardTitle className="flex items-center justify-between">
+            <div className="flex items-center">
+              <Filter className="w-5 h-5 mr-2 text-blue-600" />
+              Filtros de Busca
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+              className="md:hidden"
+            >
+              {showAdvancedFilters ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            </Button>
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -138,7 +149,7 @@ export function ContractList({ contracts, onContractSelect, initialFilters = {} 
             />
           </div>
 
-          {/* Filtros rápidos */}
+          {/* Filtros rápidos - Layout responsivo */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger>
@@ -180,42 +191,50 @@ export function ContractList({ contracts, onContractSelect, initialFilters = {} 
             </Select>
           </div>
           
-          {/* Filtro de Data de Vigência - Layout responsivo */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
-            <div>
-              <Label htmlFor="startDateFilter" className="text-sm font-medium text-gray-700 mb-2 block">
-                Data de Vigência - Início
-              </Label>
-              <div className="relative">
-                <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                <Input
-                  id="startDateFilter"
-                  type="date"
-                  value={startDateFilter}
-                  onChange={(e) => setStartDateFilter(e.target.value)}
-                  className="pl-10"
-                />
+          {/* Filtros avançados - Layout responsivo */}
+          {showAdvancedFilters && (
+            <div className="space-y-4 border-t pt-4">
+              <h4 className="text-sm font-medium text-gray-700">Filtros Avançados</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="startDateFilter" className="text-sm font-medium text-gray-700 mb-2 block">
+                    Data de Vigência - Início
+                  </Label>
+                  <div className="relative">
+                    <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                    <Input
+                      id="startDateFilter"
+                      type="date"
+                      value={startDateFilter}
+                      onChange={(e) => setStartDateFilter(e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <Label htmlFor="endDateFilter" className="text-sm font-medium text-gray-700 mb-2 block">
+                    Data de Vigência - Fim
+                  </Label>
+                  <div className="relative">
+                    <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                    <Input
+                      id="endDateFilter"
+                      type="date"
+                      value={endDateFilter}
+                      onChange={(e) => setEndDateFilter(e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+                </div>
               </div>
             </div>
-            <div>
-              <Label htmlFor="endDateFilter" className="text-sm font-medium text-gray-700 mb-2 block">
-                Data de Vigência - Fim
-              </Label>
-              <div className="relative">
-                <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                <Input
-                  id="endDateFilter"
-                  type="date"
-                  value={endDateFilter}
-                  onChange={(e) => setEndDateFilter(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-            </div>
-          </div>
+          )}
 
-          {/* Botão de limpar filtros */}
-          <div className="flex justify-end">
+          {/* Botão de limpar filtros - Layout responsivo */}
+          <div className="flex justify-between items-center">
+            <p className="text-sm text-gray-600">
+              Mostrando {filteredContracts.length} de {contracts.length} contratos
+            </p>
             <Button
               variant="outline"
               onClick={clearFilters}
@@ -226,13 +245,6 @@ export function ContractList({ contracts, onContractSelect, initialFilters = {} 
           </div>
         </CardContent>
       </Card>
-
-      {/* Resultados */}
-      <div className="flex justify-between items-center">
-        <p className="text-sm text-gray-600">
-          Mostrando {filteredContracts.length} de {contracts.length} contratos
-        </p>
-      </div>
 
       {/* Lista de contratos - Layout responsivo */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -247,7 +259,7 @@ export function ContractList({ contracts, onContractSelect, initialFilters = {} 
 
       {filteredContracts.length === 0 && (
         <Card>
-          <CardContent className="p-12 text-center">
+          <CardContent className="p-8 md:p-12 text-center">
             <Search className="w-12 h-12 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">
               Nenhum contrato encontrado
