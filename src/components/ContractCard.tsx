@@ -45,7 +45,7 @@ export function ContractCard({ contract, onClick }: ContractCardProps) {
       <CardHeader className="pb-3">
         <div className="flex flex-col space-y-3">
           {/* Número do contrato e status */}
-          <div className="flex items-start justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between">
             <div className="flex-1">
               <CardTitle className="text-lg font-semibold text-gray-900 mb-1">
                 Contrato {contract.number}
@@ -54,7 +54,7 @@ export function ContractCard({ contract, onClick }: ContractCardProps) {
                 {contract.object}
               </p>
             </div>
-            <Badge className={`${status.color} text-white ml-2 flex-shrink-0`}>
+            <Badge className={`${status.color} text-white ml-0 sm:ml-2 flex-shrink-0 mt-1 sm:mt-0`}>
               <StatusIcon className="w-3 h-3 mr-1" />
               {status.label}
             </Badge>

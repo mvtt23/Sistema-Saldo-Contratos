@@ -15,7 +15,9 @@ import {
   BarChart3,
   PieChart,
   TrendingUp,
-  Filter
+  Filter,
+  ChevronDown,
+  ChevronUp
 } from "lucide-react";
 
 interface ReportsProps {
@@ -27,8 +29,10 @@ interface ReportsProps {
 export function Reports({ contracts, onContractSelect, managingUnits }: ReportsProps) {
   const [selectedUnit, setSelectedUnit] = useState<string>('all');
   const [selectedType, setSelectedType] = useState<string>('summary');
+  const [selectedFormat, setSelectedFormat] = useState<string>('pdf');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
 
   // Filtrar contratos por unidade selecionada
   const filteredContracts = selectedUnit === 'all' 
@@ -87,6 +91,7 @@ export function Reports({ contracts, onContractSelect, managingUnits }: ReportsP
     console.log('Gerando relatório:', {
       selectedUnit,
       selectedType,
+      selectedFormat,
       startDate,
       endDate,
       totalContracts,
@@ -102,19 +107,30 @@ export function Reports({ contracts, onContractSelect, managingUnits }: ReportsP
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl md:text-2xl lg:text-3xl font-bold text-gray-900 mb-2">Relatórios</h2>
+        <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">Relatórios</h2>
         <p className="text-gray-600">Gere relatórios detalhados sobre contratos e gestão</p>
       </div>
 
       {/* Filtros do relatório - Layout responsivo */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center">
-            <Filter className="w-5 h-5 mr-2 text-blue-600" />
-            Filtros do Relatório
+          <CardTitle className="flex items-center justify-between">
+            <div className="flex items-center">
+              <Filter className="w-5 h-5 mr-2 text-blue-600" />
+              Filtros do Relatório
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+              className="md:hidden"
+            >
+              {showAdvancedFilters ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            </Button>
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* Filtros principais - Layout responsivo */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <Label htmlFor="unitFilter">Unidade Gestora</Label>
@@ -149,7 +165,7 @@ export function Reports({ contracts, onContractSelect, managingUnits }: ReportsP
 
             <div>
               <Label htmlFor="reportFormat">Formato</Label>
-              <Select defaultValue="pdf">
+              <Select value={selectedFormat} onValueChange={setSelectedFormat}>
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione o formato" />
                 </SelectTrigger>
@@ -162,27 +178,42 @@ export function Reports({ contracts, onContractSelect, managingUnits }: ReportsP
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="startDate">Data Inicial</Label>
-              <Input
-                id="startDate"
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-              />
+          {/* Filtros avançados - Layout responsivo */}
+          {showAdvancedFilters && (
+            <div className="space-y-4 border-t pt-4">
+              <h4 className="text-sm font-medium text-gray-700">Filtros Avançados</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="startDate">Data Inicial</Label>
+                  <div className="relative">
+                    <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                    <Input
+                      id="startDate"
+                      type="date"
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <Label htmlFor="endDate">Data Final</Label>
+                  <div className="relative">
+                    <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                    <Input
+                      id="endDate"
+                      type="date"
+                      value={endDate}
+                      onChange={(e) => setEndDate(e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
-            <div>
-              <Label htmlFor="endDate">Data Final</Label>
-              <Input
-                id="endDate"
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-              />
-            </div>
-          </div>
+          )}
 
+          {/* Botão de geração - Layout responsivo */}
           <div className="flex justify-end">
             <Button onClick={handleGenerateReport} className="bg-blue-600 hover:bg-blue-700">
               <Download className="w-4 h-4 mr-2" />
@@ -194,7 +225,7 @@ export function Reports({ contracts, onContractSelect, managingUnits }: ReportsP
 
       {/* Resumo dos dados - Layout responsivo */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
+        <Card className="border-l-4 border-l-blue-500">
           <CardContent className="p-4">
             <div className="flex items-center">
               <FileText className="w-6 h-6 text-blue-500 mr-3" />
@@ -206,7 +237,7 @@ export function Reports({ contracts, onContractSelect, managingUnits }: ReportsP
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-l-4 border-l-green-500">
           <CardContent className="p-4">
             <div className="flex items-center">
               <DollarSign className="w-6 h-6 text-green-500 mr-3" />
@@ -218,7 +249,7 @@ export function Reports({ contracts, onContractSelect, managingUnits }: ReportsP
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-l-4 border-l-orange-500">
           <CardContent className="p-4">
             <div className="flex items-center">
               <TrendingUp className="w-6 h-6 text-orange-500 mr-3" />
@@ -230,7 +261,7 @@ export function Reports({ contracts, onContractSelect, managingUnits }: ReportsP
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-l-4 border-l-purple-500">
           <CardContent className="p-4">
             <div className="flex items-center">
               <DollarSign className="w-6 h-6 text-purple-500 mr-3" />
