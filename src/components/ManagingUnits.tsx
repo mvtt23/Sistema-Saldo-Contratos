@@ -442,8 +442,7 @@ export function ManagingUnits({ initialUnits, refetchData, saveUnit, deleteUnit,
                     
                     {showFiscalSearch && fiscalSearchTerm && (
                       <div className="max-h-48 overflow-y-auto border rounded-lg bg-white shadow-lg">
-                        {filteredFiscals.length > 0 ? (
-                          filteredFiscals.map(fiscal => (
+                        {filteredFiscals.map(fiscal => (
                             <div
                               key={fiscal.id}
                               className="p-3 hover:bg-gray-50 cursor-pointer border-b last:border-b-0"
@@ -455,7 +454,8 @@ export function ManagingUnits({ initialUnits, refetchData, saveUnit, deleteUnit,
                               </div>
                             </div>
                           ))
-                        ) : (
+                        }
+                        {filteredFiscals.length === 0 && (
                           <div className="p-3 text-gray-500 text-center">
                             Nenhum fiscal encontrado
                           </div>
@@ -465,9 +465,7 @@ export function ManagingUnits({ initialUnits, refetchData, saveUnit, deleteUnit,
                   </div>
                 )}
               </div>
-              <div className="flex flex-col sm:flex-row justify-end space-y-2
-<dyad-write path="src/components/ManagingUnits.tsx" description="ManagingUnits responsivo para mobile (continuação)">
-                  sm:space-y-0 sm:space-x-4">
+              <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-4">
                   <Button type="button" variant="outline" onClick={handleCancel}>
                     Cancelar
                   </Button>
