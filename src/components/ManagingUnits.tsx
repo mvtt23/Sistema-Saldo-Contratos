@@ -454,7 +454,7 @@ export function ManagingUnits({ initialUnits, refetchData, saveUnit, deleteUnit,
                               </div>
                             </div>
                           ))
-                        }
+                        )}
                         {filteredFiscals.length === 0 && (
                           <div className="p-3 text-gray-500 text-center">
                             Nenhum fiscal encontrado
@@ -534,7 +534,7 @@ export function ManagingUnits({ initialUnits, refetchData, saveUnit, deleteUnit,
       <div className="grid grid-cols-1 gap-6">
         {units.map(unit => (
           <Card key={unit.id} className="hover:shadow-lg transition-shadow">
-            <CardHeader className="pb-3">
+            <CardHeader>
               <div className="flex flex-col space-y-3">
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
@@ -629,6 +629,9 @@ export function ManagingUnits({ initialUnits, refetchData, saveUnit, deleteUnit,
                   )}
                 </div>
               </div>
+            </CardHeader>
+            <CardContent>
+              {/* Conteúdo adicional pode ser adicionado aqui */}
             </CardContent>
           </Card>
         ))}
