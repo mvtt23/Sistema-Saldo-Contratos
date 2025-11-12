@@ -49,26 +49,44 @@ export function ContractForm({ onContractSave, managingUnits, companies, saveCom
   const selectedUnit = managingUnits.find(unit => unit.name === formData.managingUnit);
   const availablePrograms = selectedUnit ? selectedUnit.programs : [];
 
-  // Debug: Log quando selectedCompany mudar
-  useEffect(() => {
-    console.log('selectedCompany mudou para:', selectedCompany);
-  }, [selectedCompany]);
+  // Função para formatar CPF/CNPJ enquanto digita
+  const formatDocument = (value: string): string => {
+    // Remove todos os caracteres não numéricos
+    const cleaned = value.replace(/\D/g, '');
+    
+    if (cleaned.length <= 11) {
+      // Formata como CPF
+      return cleaned.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+    } else {
+      // Formata como CNPJ
+      return cleaned.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
+    }
+  };
+
+  const handleDocumentChange = (field: string, value: string) => {
+    // Formata o documento antes de atualizar o estado
+    const formattedValue = formatDocument(value);
+    setCompanyFormData(prev => ({ ...prev, [field]: formattedValue }));
+  };
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
   const handleCompanyInputChange = (field: string, value: string) => {
-    setCompanyFormData(prev => ({ ...prev, [field]: value }));
+    if (field === 'document') {
+      handleDocumentChange(field, value);
+    } else {
+      setCompanyFormData(prev => ({ ...prev, [field]: value }));
+    }
   };
 
   const filteredCompanies = companies.filter(company =>
     company.name.toLowerCase().includes(companySearchTerm.toLowerCase()) ||
-    company.document.includes(companySearchTerm)
+    company.document.replace(/\D/g, '').includes(companySearchTerm.replace(/\D/g, ''))
   );
 
   const handleCompanySelect = (company: Company) => {
-    console.log('Selecionando empresa:', company);
     setSelectedCompany(company);
     setCompanySearchTerm(company.name);
     setShowCompanyList(false);
@@ -91,7 +109,7 @@ export function ContractForm({ onContractSave, managingUnits, companies, saveCom
     // Verificar se o documento já existe (exceto quando estiver editando)
     if (!editingCompany) {
       const existingCompany = companies.find(company => 
-        company.document === companyFormData.document
+        company.document.replace(/\D/g, '') === companyFormData.document.replace(/\D/g, '')
       );
       
       if (existingCompany) {
@@ -111,22 +129,17 @@ export function ContractForm({ onContractSave, managingUnits, companies, saveCom
         ? { ...editingCompany, ...companyFormData } as Company
         : companyFormData as Omit<Company, 'id'>;
 
-      console.log('Salvando empresa:', dataToSave);
-
       const result = await saveCompany(dataToSave, isEditing);
 
       if (result) {
-        console.log('Empresa salva com sucesso:', result);
-        
         // Seleciona automaticamente a empresa recém-cadastrada
         setSelectedCompany(result);
         setCompanySearchTerm(result.name);
         
         // Força uma atualização do estado para garantir que o card apareça
         setTimeout(() => {
-          console.log('Forçando atualização do estado...');
           setSelectedCompany(result);
-        }, 100);
+        }, 50);
         
         // Fecha o formulário de cadastro
         setShowCompanyForm(false);
@@ -152,7 +165,6 @@ export function ContractForm({ onContractSave, managingUnits, companies, saveCom
   };
 
   const handleClearCompany = () => {
-    console.log('Limpando seleção de empresa');
     setSelectedCompany(null);
     setCompanySearchTerm('');
     setShowCompanyForm(false);
