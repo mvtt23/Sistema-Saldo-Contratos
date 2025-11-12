@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Company, Contract, ManagingUnit } from "@/types/contract";
-import { Building2, User, FileText, Save, Search, Plus, X, Edit2, Trash2, CheckCircle, Loader2 } from "lucide-react";
+import { Building2, User, FileText, Save, Search, Plus, X, Edit2, Trash2, CheckCircle } from "lucide-react";
 
 interface ContractFormProps {
   onContractSave: (contractData: Omit<Contract, 'id' | 'additives' | 'invoices'>) => void;
@@ -46,9 +46,6 @@ export function ContractForm({ onContractSave, managingUnits, companies, saveCom
     value: ''
   });
 
-  const [isSavingCompany, setIsSavingCompany] = useState(false);
-  const [companySaved, setCompanySaved] = useState(false);
-
   const selectedUnit = managingUnits.find(unit => unit.name === formData.managingUnit);
   const availablePrograms = selectedUnit ? selectedUnit.programs : [];
 
@@ -70,7 +67,6 @@ export function ContractForm({ onContractSave, managingUnits, companies, saveCom
     setCompanySearchTerm(company.name);
     setShowCompanyList(false);
     setShowCompanyForm(false);
-    setCompanySaved(false);
   };
 
   const handleNewCompany = () => {
@@ -78,7 +74,6 @@ export function ContractForm({ onContractSave, managingUnits, companies, saveCom
     setCompanyFormData({ name: '', document: '', city: '', state: '' });
     setShowCompanyForm(true);
     setShowCompanyList(false);
-    setCompanySaved(false);
   };
 
   const handleSaveCompany = async () => {
@@ -103,8 +98,6 @@ export function ContractForm({ onContractSave, managingUnits, companies, saveCom
       }
     }
 
-    setIsSavingCompany(true);
-    
     try {
       const isEditing = !!editingCompany;
       
@@ -115,35 +108,37 @@ export function ContractForm({ onContractSave, managingUnits, companies, saveCom
       const result = await saveCompany(dataToSave, isEditing);
 
       if (result) {
+        // Seleciona automaticamente a empresa recém-cadastrada
         setSelectedCompany(result);
         setCompanySearchTerm(result.name);
-        setCompanySaved(true);
+        
+        // Fecha o formulário de cadastro
         setShowCompanyForm(false);
         
-        // Limpar o formulário após 2 segundos
-        setTimeout(() => {
-          setCompanyFormData({ name: '', document: '', city: '', state: '' });
-          setCompanySaved(false);
-        }, 2000);
+        // Limpa o formulário
+        setCompanyFormData({ name: '', document: '', city: '', state: '' });
+        
+        // Mostra feedback visual rápido
+        toast({ 
+          title: "Sucesso!", 
+          description: `Empresa "${result.name}" cadastrada e selecionada com sucesso.` 
+        });
       }
     } catch (error) {
       console.error('Erro ao salvar empresa:', error);
-    } finally {
-      setIsSavingCompany(false);
+      toast({ variant: "destructive", title: "Erro", description: "Falha ao salvar empresa." });
     }
   };
 
   const handleCancelCompany = () => {
     setCompanyFormData({ name: '', document: '', city: '', state: '' });
     setShowCompanyForm(false);
-    setCompanySaved(false);
   };
 
   const handleClearCompany = () => {
     setSelectedCompany(null);
     setCompanySearchTerm('');
     setShowCompanyForm(false);
-    setCompanySaved(false);
   };
 
   const handleManageCompanies = () => {
@@ -161,7 +156,6 @@ export function ContractForm({ onContractSave, managingUnits, companies, saveCom
     });
     setShowCompanyForm(true);
     setShowCompanyList(false);
-    setCompanySaved(false);
   };
 
   const handleDeleteCompany = async (companyId: string) => {
@@ -171,7 +165,6 @@ export function ContractForm({ onContractSave, managingUnits, companies, saveCom
         setSelectedCompany(null);
         setCompanySearchTerm('');
         setShowCompanyForm(false);
-        setCompanySaved(false);
       }
     }
   };
@@ -181,7 +174,6 @@ export function ContractForm({ onContractSave, managingUnits, companies, saveCom
     setShowCompanyForm(false);
     setCompanyFormData({ name: '', document: '', city: '', state: '' });
     setEditingCompany(null);
-    setCompanySaved(false);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -237,8 +229,6 @@ export function ContractForm({ onContractSave, managingUnits, companies, saveCom
     });
     setSelectedCompany(null);
     setCompanySearchTerm('');
-    setShowCompanyForm(false);
-    setCompanySaved(false);
   };
 
   return (
@@ -258,7 +248,7 @@ export function ContractForm({ onContractSave, managingUnits, companies, saveCom
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {selectedCompany && !editingCompany && !companySaved ? (
+            {selectedCompany ? (
               <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                 <div className="flex flex-col space-y-2">
                   <div className="flex justify-between items-start">
@@ -287,16 +277,6 @@ export function ContractForm({ onContractSave, managingUnits, companies, saveCom
                         Trocar
                       </Button>
                     </div>
-                  </div>
-                </div>
-              </div>
-            ) : companySaved ? (
-              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                <div className="flex items-center space-x-3">
-                  <CheckCircle className="w-6 h-6 text-green-600" />
-                  <div>
-                    <h4 className="font-semibold text-green-800">Empresa cadastrada com sucesso!</h4>
-                    <p className="text-sm text-green-600">{companyFormData.name} - {companyFormData.document}</p>
                   </div>
                 </div>
               </div>
@@ -409,7 +389,7 @@ export function ContractForm({ onContractSave, managingUnits, companies, saveCom
                   </div>
                 )}
 
-                {/* Formulário de Cadastro de Empresa - Sem atualizar página */}
+                {/* Formulário de Cadastro de Empresa - Inline e rápido */}
                 {showCompanyForm && (
                   <div className="space-y-4 border border-blue-200 rounded-lg p-4 bg-blue-50">
                     <div className="flex justify-between items-center">
@@ -500,20 +480,10 @@ export function ContractForm({ onContractSave, managingUnits, companies, saveCom
                       <Button
                         type="button"
                         onClick={handleSaveCompany}
-                        disabled={isSavingCompany}
                         className="bg-blue-600 hover:bg-blue-700"
                       >
-                        {isSavingCompany ? (
-                          <>
-                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                            Salvando...
-                          </>
-                        ) : (
-                          <>
-                            <Save className="w-4 h-4 mr-2" />
-                            {editingCompany ? 'Atualizar Empresa' : 'Salvar Empresa'}
-                          </>
-                        )}
+                        <Save className="w-4 h-4 mr-2" />
+                        {editingCompany ? 'Atualizar Empresa' : 'Salvar Empresa'}
                       </Button>
                     </div>
                   </div>
