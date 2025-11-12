@@ -24,6 +24,7 @@ export function ContractForm({ onContractSave, managingUnits, companies, saveCom
   const [companySearchTerm, setCompanySearchTerm] = useState('');
   const [showCompanyList, setShowCompanyList] = useState(false);
   const [editingCompany, setEditingCompany] = useState<Company | null>(null);
+  const [showCompanyForm, setShowCompanyForm] = useState(false);
   
   const [companyFormData, setCompanyFormData] = useState({
     name: '',
@@ -68,11 +69,15 @@ export function ContractForm({ onContractSave, managingUnits, companies, saveCom
     setSelectedCompany(company);
     setCompanySearchTerm(company.name);
     setShowCompanyList(false);
+    setShowCompanyForm(false);
+    setCompanySaved(false);
   };
 
   const handleNewCompany = () => {
     setEditingCompany(null);
     setCompanyFormData({ name: '', document: '', city: '', state: '' });
+    setShowCompanyForm(true);
+    setShowCompanyList(false);
     setCompanySaved(false);
   };
 
@@ -113,6 +118,7 @@ export function ContractForm({ onContractSave, managingUnits, companies, saveCom
         setSelectedCompany(result);
         setCompanySearchTerm(result.name);
         setCompanySaved(true);
+        setShowCompanyForm(false);
         
         // Limpar o formulário após 2 segundos
         setTimeout(() => {
@@ -129,17 +135,20 @@ export function ContractForm({ onContractSave, managingUnits, companies, saveCom
 
   const handleCancelCompany = () => {
     setCompanyFormData({ name: '', document: '', city: '', state: '' });
+    setShowCompanyForm(false);
     setCompanySaved(false);
   };
 
   const handleClearCompany = () => {
     setSelectedCompany(null);
     setCompanySearchTerm('');
+    setShowCompanyForm(false);
     setCompanySaved(false);
   };
 
   const handleManageCompanies = () => {
     setShowCompanyList(true);
+    setShowCompanyForm(false);
   };
 
   const handleEditCompany = (company: Company) => {
@@ -150,8 +159,9 @@ export function ContractForm({ onContractSave, managingUnits, companies, saveCom
       city: company.city,
       state: company.state
     });
-    setCompanySaved(false);
+    setShowCompanyForm(true);
     setShowCompanyList(false);
+    setCompanySaved(false);
   };
 
   const handleDeleteCompany = async (companyId: string) => {
@@ -160,6 +170,7 @@ export function ContractForm({ onContractSave, managingUnits, companies, saveCom
       if (success && selectedCompany?.id === companyId) {
         setSelectedCompany(null);
         setCompanySearchTerm('');
+        setShowCompanyForm(false);
         setCompanySaved(false);
       }
     }
@@ -167,6 +178,7 @@ export function ContractForm({ onContractSave, managingUnits, companies, saveCom
 
   const handleBackToSearch = () => {
     setShowCompanyList(false);
+    setShowCompanyForm(false);
     setCompanyFormData({ name: '', document: '', city: '', state: '' });
     setEditingCompany(null);
     setCompanySaved(false);
@@ -225,6 +237,7 @@ export function ContractForm({ onContractSave, managingUnits, companies, saveCom
     });
     setSelectedCompany(null);
     setCompanySearchTerm('');
+    setShowCompanyForm(false);
     setCompanySaved(false);
   };
 
@@ -397,7 +410,7 @@ export function ContractForm({ onContractSave, managingUnits, companies, saveCom
                 )}
 
                 {/* Formulário de Cadastro de Empresa - Sem atualizar página */}
-                {(companyFormData.name || companyFormData.document || companyFormData.city || companyFormData.state) && (
+                {showCompanyForm && (
                   <div className="space-y-4 border border-blue-200 rounded-lg p-4 bg-blue-50">
                     <div className="flex justify-between items-center">
                       <h4 className="font-semibold text-blue-800">
