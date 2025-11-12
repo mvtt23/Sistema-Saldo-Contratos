@@ -92,7 +92,7 @@ export function ContractForm({ onContractSave, managingUnits, companies, saveCom
         toast({ 
           variant: "destructive", 
           title: "Erro", 
-          description: `Já existe uma empresa com o documento ${companyFormData.document}. Por favor, use um documento diferente ou selecione a empresa existente.` 
+          description: "empresa já cadastrada" // Mensagem atualizada
         });
         return;
       }
