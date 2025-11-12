@@ -110,14 +110,6 @@ export function Login() {
           </CardContent>
         </Card>
 
-        <div className="mt-6 text-center text-sm text-slate-600">
-          <p>Dados de teste:</p>
-          <p className="font-mono bg-slate-100 p-2 rounded mt-1">
-            Usuário: admin<br />
-            Senha: admin123
-          </p>
-        </div>
-
         <p className="text-center text-sm text-slate-600 mt-6">
           Sistema de Gestão de Contratos © 2025
         </p>

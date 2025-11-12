@@ -43,6 +43,45 @@ export function useUserManagement() {
     { module: 'settings', label: 'Configurações', icon: 'Settings', can_view: true, can_edit: false, can_create: false, can_delete: false },
   ];
 
+  // Função auxiliar para obter permissões padrão por perfil
+  const getDefaultPermissions = (role: string): ModulePermission[] => {
+    // Módulos que sempre devem ter visualização ativa
+    const baseModules = modules.map(module => {
+      if (module.module === 'dashboard' || module.module === 'reports') {
+        return { ...module, can_view: true, can_edit: false, can_create: false, can_delete: false };
+      }
+      return module;
+    });
+
+    if (role === 'viewer') {
+      return baseModules.map(module => {
+        if (module.module === 'contracts') {
+          return { ...module, can_view: true };
+        }
+        return module;
+      });
+    } else if (role === 'fiscal') {
+      // Fiscal: Contratos, Unidades Gestoras, Relatórios (todos com CRUD, exceto settings)
+      return baseModules.map(module => {
+        if (module.module === 'contracts' || module.module === 'managing_units' || module.module === 'reports') {
+          return { ...module, can_view: true, can_edit: true, can_create: true, can_delete: true };
+        }
+        return module;
+      });
+    } else if (role === 'manager') {
+      // Gerente: Contratos, Unidades Gestoras, Relatórios (com visualização e edição/criação)
+      return baseModules.map(module => {
+        if (module.module === 'contracts' || module.module === 'managing_units') {
+          return { ...module, can_view: true, can_edit: true, can_create: true };
+        }
+        return module;
+      });
+    } else if (role === 'admin') {
+      return modules.map(module => ({ ...module, can_view: true, can_edit: true, can_create: true, can_delete: true }));
+    }
+    return baseModules;
+  };
+
   // Buscar todos os usuários
   const fetchUsers = useCallback(async () => {
     setLoading(true);
@@ -68,9 +107,16 @@ export function useUserManagement() {
         // Mapear permissões para o formato correto
         const userModulePerms = modules.map(module => {
           const perm = userPerms?.find(p => p.module === module.module);
+          
+          // Aplicar regras de visualização obrigatória para dashboard e reports
+          let can_view = perm?.can_view || false;
+          if (module.module === 'dashboard' || module.module === 'reports') {
+            can_view = true;
+          }
+
           return {
             ...module,
-            can_view: perm?.can_view || false,
+            can_view: can_view,
             can_edit: perm?.can_edit || false,
             can_create: perm?.can_create || false,
             can_delete: perm?.can_delete || false,
@@ -235,27 +281,6 @@ export function useUserManagement() {
       return false;
     }
   }, [fetchUsers, toast]);
-
-  // Função auxiliar para obter permissões padrão por perfil
-  const getDefaultPermissions = (role: string): ModulePermission[] => {
-    if (role === 'viewer') {
-      return [
-        { ...modules[0], can_view: true }, // Dashboard
-        { ...modules[1], can_view: true }, // Contratos (visualização)
-        { ...modules[3], can_view: true }, // Relatórios
-      ];
-    } else if (role === 'manager') {
-      return [
-        { ...modules[0], can_view: true }, // Dashboard
-        { ...modules[1], can_view: true, can_edit: true, can_create: true }, // Contratos
-        { ...modules[2], can_view: true, can_edit: true, can_create: true }, // Unidades Gestoras
-        { ...modules[3], can_view: true }, // Relatórios
-      ];
-    } else if (role === 'admin') {
-      return modules.map(module => ({ ...module, can_view: true, can_edit: true, can_create: true, can_delete: true }));
-    }
-    return [];
-  };
 
   // Carregar dados iniciais
   useEffect(() => {

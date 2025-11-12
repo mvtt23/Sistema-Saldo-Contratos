@@ -51,6 +51,9 @@ export function UserManagement() {
   const [userForm, setUserForm] = useState({ username: '', password: '', role: 'viewer' });
   const [userPermissions, setUserPermissions] = useState<ModulePermission[]>([]);
 
+  // Módulos com visualização obrigatória
+  const mandatoryViewModules = ['dashboard', 'reports'];
+
   // Inicializar permissões quando o usuário for selecionado para edição
   const handleEditUser = (user: User) => {
     setEditingUser(user);
@@ -143,9 +146,31 @@ export function UserManagement() {
 
   const handlePermissionChange = (moduleIndex: number, field: string, value: boolean) => {
     setUserPermissions(prev => 
-      prev.map((perm, idx) =>
-        idx === moduleIndex ? { ...perm, [field]: value } : perm
-      )
+      prev.map((perm, idx) => {
+        if (idx === moduleIndex) {
+          const newPerm = { ...perm, [field]: value };
+          
+          // Regra: Se desmarcar 'view' em módulos obrigatórios, forçar 'view' a true
+          if (field === 'can_view' && !value && mandatoryViewModules.includes(perm.module)) {
+            newPerm.can_view = true;
+          }
+          
+          // Regra: Se marcar 'edit', 'create' ou 'delete', forçar 'view' a true
+          if ((field === 'can_edit' || field === 'can_create' || field === 'can_delete') && value) {
+            newPerm.can_view = true;
+          }
+          
+          // Regra: Se desmarcar 'view', desmarcar 'edit', 'create' e 'delete'
+          if (field === 'can_view' && !value) {
+            newPerm.can_edit = false;
+            newPerm.can_create = false;
+            newPerm.can_delete = false;
+          }
+          
+          return newPerm;
+        }
+        return perm;
+      })
     );
   };
 
@@ -226,6 +251,7 @@ export function UserManagement() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="viewer">Visualizador</SelectItem>
+                      <SelectItem value="fiscal">Fiscal</SelectItem>
                       <SelectItem value="manager">Gerente</SelectItem>
                     </SelectContent>
                   </Select>
@@ -260,7 +286,7 @@ export function UserManagement() {
                       <div>
                         <p className="font-semibold">{user.username}</p>
                         <p className="text-sm text-gray-500">
-                          {user.is_active ? 'Ativo' : 'Inativo'} • {user.role === 'viewer' ? 'Visualizador' : 'Gerente'}
+                          {user.is_active ? 'Ativo' : 'Inativo'} • {user.role === 'viewer' ? 'Visualizador' : user.role === 'fiscal' ? 'Fiscal' : 'Gerente'}
                         </p>
                       </div>
                     </div>
@@ -305,53 +331,58 @@ export function UserManagement() {
                         Permissões por Módulo
                       </h5>
                       <div className="space-y-3">
-                        {userPermissions.map((perm, idx) => (
-                          <div key={perm.module} className="bg-gray-50 p-3 rounded-lg">
-                            <p className="font-medium mb-2">{perm.label}</p>
-                            <div className="grid grid-cols-2 gap-3">
-                              <label className="flex items-center space-x-2 text-sm">
-                                <Checkbox
-                                  checked={perm.can_view}
-                                  onCheckedChange={(checked) =>
-                                    handlePermissionChange(idx, 'can_view', checked as boolean)
-                                  }
-                                />
-                                <Eye className="w-4 h-4 text-gray-500" />
-                                <span>Visualizar</span>
-                              </label>
-                              <label className="flex items-center space-x-2 text-sm">
-                                <Checkbox
-                                  checked={perm.can_edit}
-                                  onCheckedChange={(checked) =>
-                                    handlePermissionChange(idx, 'can_edit', checked as boolean)
-                                  }
-                                />
-                                <Pencil className="w-4 h-4 text-gray-500" />
-                                <span>Editar</span>
-                              </label>
-                              <label className="flex items-center space-x-2 text-sm">
-                                <Checkbox
-                                  checked={perm.can_create}
-                                  onCheckedChange={(checked) =>
-                                    handlePermissionChange(idx, 'can_create', checked as boolean)
-                                  }
-                                />
-                                <Plus className="w-4 h-4 text-gray-500" />
-                                <span>Criar</span>
-                              </label>
-                              <label className="flex items-center space-x-2 text-sm">
-                                <Checkbox
-                                  checked={perm.can_delete}
-                                  onCheckedChange={(checked) =>
-                                    handlePermissionChange(idx, 'can_delete', checked as boolean)
-                                  }
-                                />
-                                <Trash2 className="w-4 h-4 text-gray-500" />
-                                <span>Excluir</span>
-                              </label>
+                        {userPermissions.map((perm, idx) => {
+                          const isMandatoryView = mandatoryViewModules.includes(perm.module);
+                          
+                          return (
+                            <div key={perm.module} className="bg-gray-50 p-3 rounded-lg">
+                              <p className="font-medium mb-2">{perm.label}</p>
+                              <div className="grid grid-cols-2 gap-3">
+                                <label className="flex items-center space-x-2 text-sm">
+                                  <Checkbox
+                                    checked={perm.can_view}
+                                    onCheckedChange={(checked) =>
+                                      handlePermissionChange(idx, 'can_view', checked as boolean)
+                                    }
+                                    disabled={isMandatoryView} // Desabilita se for visualização obrigatória
+                                  />
+                                  <Eye className="w-4 h-4 text-gray-500" />
+                                  <span>Visualizar {isMandatoryView && '(Obrigatório)'}</span>
+                                </label>
+                                <label className="flex items-center space-x-2 text-sm">
+                                  <Checkbox
+                                    checked={perm.can_edit}
+                                    onCheckedChange={(checked) =>
+                                      handlePermissionChange(idx, 'can_edit', checked as boolean)
+                                    }
+                                  />
+                                  <Pencil className="w-4 h-4 text-gray-500" />
+                                  <span>Editar</span>
+                                </label>
+                                <label className="flex items-center space-x-2 text-sm">
+                                  <Checkbox
+                                    checked={perm.can_create}
+                                    onCheckedChange={(checked) =>
+                                      handlePermissionChange(idx, 'can_create', checked as boolean)
+                                    }
+                                  />
+                                  <Plus className="w-4 h-4 text-gray-500" />
+                                  <span>Criar</span>
+                                </label>
+                                <label className="flex items-center space-x-2 text-sm">
+                                  <Checkbox
+                                    checked={perm.can_delete}
+                                    onCheckedChange={(checked) =>
+                                      handlePermissionChange(idx, 'can_delete', checked as boolean)
+                                    }
+                                  />
+                                  <Trash2 className="w-4 h-4 text-gray-500" />
+                                  <span>Excluir</span>
+                                </label>
+                              </div>
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                       <div className="flex justify-end mt-4 space-x-2">
                         <Button variant="outline" onClick={handleCancelPermissions}>
