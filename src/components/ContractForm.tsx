@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -49,6 +49,11 @@ export function ContractForm({ onContractSave, managingUnits, companies, saveCom
   const selectedUnit = managingUnits.find(unit => unit.name === formData.managingUnit);
   const availablePrograms = selectedUnit ? selectedUnit.programs : [];
 
+  // Debug: Log quando selectedCompany mudar
+  useEffect(() => {
+    console.log('selectedCompany mudou para:', selectedCompany);
+  }, [selectedCompany]);
+
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
@@ -63,6 +68,7 @@ export function ContractForm({ onContractSave, managingUnits, companies, saveCom
   );
 
   const handleCompanySelect = (company: Company) => {
+    console.log('Selecionando empresa:', company);
     setSelectedCompany(company);
     setCompanySearchTerm(company.name);
     setShowCompanyList(false);
@@ -105,12 +111,22 @@ export function ContractForm({ onContractSave, managingUnits, companies, saveCom
         ? { ...editingCompany, ...companyFormData } as Company
         : companyFormData as Omit<Company, 'id'>;
 
+      console.log('Salvando empresa:', dataToSave);
+
       const result = await saveCompany(dataToSave, isEditing);
 
       if (result) {
+        console.log('Empresa salva com sucesso:', result);
+        
         // Seleciona automaticamente a empresa recém-cadastrada
         setSelectedCompany(result);
         setCompanySearchTerm(result.name);
+        
+        // Força uma atualização do estado para garantir que o card apareça
+        setTimeout(() => {
+          console.log('Forçando atualização do estado...');
+          setSelectedCompany(result);
+        }, 100);
         
         // Fecha o formulário de cadastro
         setShowCompanyForm(false);
@@ -136,6 +152,7 @@ export function ContractForm({ onContractSave, managingUnits, companies, saveCom
   };
 
   const handleClearCompany = () => {
+    console.log('Limpando seleção de empresa');
     setSelectedCompany(null);
     setCompanySearchTerm('');
     setShowCompanyForm(false);
