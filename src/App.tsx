@@ -17,6 +17,7 @@ import { useContractManagement } from '@/hooks/useContractManagement';
 export type PageType = 'overview' | 'contracts' | 'contract-form' | 'managing-units' | 'reports' | 'settings' | 'contract-details';
 
 function App() {
+  console.log("App component started rendering."); // Adicionado para depuração
   const { user, loading: authLoading } = useAuth();
   const { contracts, managingUnits, companies, loading: dataLoading, refetch } = useSupabaseData();
   const { 
