@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Company, Contract, ManagingUnit } from "@/types/contract";
-import { Building2, User, FileText, Save, Search, Plus, X, Edit2, Trash2 } from "lucide-react";
+import { Building2, User, FileText, Save, Search, Plus, X, Edit2, Trash2, CheckCircle, Loader2 } from "lucide-react";
 
 interface ContractFormProps {
   onContractSave: (contractData: Omit<Contract, 'id' | 'additives' | 'invoices'>) => void;
@@ -22,8 +22,6 @@ export function ContractForm({ onContractSave, managingUnits, companies, saveCom
   const { toast } = useToast();
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
   const [companySearchTerm, setCompanySearchTerm] = useState('');
-  const [showCompanyForm, setShowCompanyForm] = useState(false);
-  const [showCompanySearch, setShowCompanySearch] = useState(true);
   const [showCompanyList, setShowCompanyList] = useState(false);
   const [editingCompany, setEditingCompany] = useState<Company | null>(null);
   
@@ -47,6 +45,9 @@ export function ContractForm({ onContractSave, managingUnits, companies, saveCom
     value: ''
   });
 
+  const [isSavingCompany, setIsSavingCompany] = useState(false);
+  const [companySaved, setCompanySaved] = useState(false);
+
   const selectedUnit = managingUnits.find(unit => unit.name === formData.managingUnit);
   const availablePrograms = selectedUnit ? selectedUnit.programs : [];
 
@@ -66,14 +67,13 @@ export function ContractForm({ onContractSave, managingUnits, companies, saveCom
   const handleCompanySelect = (company: Company) => {
     setSelectedCompany(company);
     setCompanySearchTerm(company.name);
-    setShowCompanySearch(false);
+    setShowCompanyList(false);
   };
 
   const handleNewCompany = () => {
     setEditingCompany(null);
     setCompanyFormData({ name: '', document: '', city: '', state: '' });
-    setShowCompanyForm(true);
-    setShowCompanySearch(false);
+    setCompanySaved(false);
   };
 
   const handleSaveCompany = async () => {
@@ -92,48 +92,54 @@ export function ContractForm({ onContractSave, managingUnits, companies, saveCom
         toast({ 
           variant: "destructive", 
           title: "Erro", 
-          description: "empresa já cadastrada" // Mensagem atualizada
+          description: "empresa já cadastrada" 
         });
         return;
       }
     }
 
-    const isEditing = !!editingCompany;
+    setIsSavingCompany(true);
     
-    const dataToSave = isEditing 
-      ? { ...editingCompany, ...companyFormData } as Company
-      : companyFormData as Omit<Company, 'id'>;
+    try {
+      const isEditing = !!editingCompany;
+      
+      const dataToSave = isEditing 
+        ? { ...editingCompany, ...companyFormData } as Company
+        : companyFormData as Omit<Company, 'id'>;
 
-    const result = await saveCompany(dataToSave, isEditing);
+      const result = await saveCompany(dataToSave, isEditing);
 
-    if (result) {
-      setSelectedCompany(result);
-      setCompanySearchTerm(result.name);
+      if (result) {
+        setSelectedCompany(result);
+        setCompanySearchTerm(result.name);
+        setCompanySaved(true);
+        
+        // Limpar o formulário após 2 segundos
+        setTimeout(() => {
+          setCompanyFormData({ name: '', document: '', city: '', state: '' });
+          setCompanySaved(false);
+        }, 2000);
+      }
+    } catch (error) {
+      console.error('Erro ao salvar empresa:', error);
+    } finally {
+      setIsSavingCompany(false);
     }
-
-    setCompanyFormData({ name: '', document: '', city: '', state: '' });
-    setShowCompanyForm(false);
-    setShowCompanySearch(false);
-    setShowCompanyList(false);
-    setEditingCompany(null);
   };
 
   const handleCancelCompany = () => {
     setCompanyFormData({ name: '', document: '', city: '', state: '' });
-    setShowCompanyForm(false);
-    setShowCompanySearch(true);
+    setCompanySaved(false);
   };
 
   const handleClearCompany = () => {
     setSelectedCompany(null);
     setCompanySearchTerm('');
-    setShowCompanySearch(true);
+    setCompanySaved(false);
   };
 
   const handleManageCompanies = () => {
     setShowCompanyList(true);
-    setShowCompanySearch(false);
-    setShowCompanyForm(false);
   };
 
   const handleEditCompany = (company: Company) => {
@@ -144,9 +150,8 @@ export function ContractForm({ onContractSave, managingUnits, companies, saveCom
       city: company.city,
       state: company.state
     });
-    setShowCompanyForm(true);
+    setCompanySaved(false);
     setShowCompanyList(false);
-    setShowCompanySearch(false);
   };
 
   const handleDeleteCompany = async (companyId: string) => {
@@ -155,16 +160,16 @@ export function ContractForm({ onContractSave, managingUnits, companies, saveCom
       if (success && selectedCompany?.id === companyId) {
         setSelectedCompany(null);
         setCompanySearchTerm('');
-        setShowCompanySearch(true);
+        setCompanySaved(false);
       }
     }
   };
 
   const handleBackToSearch = () => {
     setShowCompanyList(false);
-    setShowCompanySearch(true);
     setCompanyFormData({ name: '', document: '', city: '', state: '' });
     setEditingCompany(null);
+    setCompanySaved(false);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -192,7 +197,7 @@ export function ContractForm({ onContractSave, managingUnits, companies, saveCom
       modality: formData.modality as any,
       isCarona: formData.modality === 'registro-preco' ? formData.isCarona : false,
       object: formData.object,
-      contractor: selectedCompany.name, // Usamos o nome da empresa selecionada
+      contractor: selectedCompany.name,
       managingUnit: formData.managingUnit,
       originalValue: value,
       currentValue: value,
@@ -220,7 +225,7 @@ export function ContractForm({ onContractSave, managingUnits, companies, saveCom
     });
     setSelectedCompany(null);
     setCompanySearchTerm('');
-    setShowCompanySearch(true);
+    setCompanySaved(false);
   };
 
   return (
@@ -240,7 +245,7 @@ export function ContractForm({ onContractSave, managingUnits, companies, saveCom
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {selectedCompany && !editingCompany ? (
+            {selectedCompany && !editingCompany && !companySaved ? (
               <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                 <div className="flex flex-col space-y-2">
                   <div className="flex justify-between items-start">
@@ -269,6 +274,16 @@ export function ContractForm({ onContractSave, managingUnits, companies, saveCom
                         Trocar
                       </Button>
                     </div>
+                  </div>
+                </div>
+              </div>
+            ) : companySaved ? (
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                <div className="flex items-center space-x-3">
+                  <CheckCircle className="w-6 h-6 text-green-600" />
+                  <div>
+                    <h4 className="font-semibold text-green-800">Empresa cadastrada com sucesso!</h4>
+                    <p className="text-sm text-green-600">{companyFormData.name} - {companyFormData.document}</p>
                   </div>
                 </div>
               </div>
@@ -328,103 +343,6 @@ export function ContractForm({ onContractSave, managingUnits, companies, saveCom
                   )}
                 </div>
               </div>
-            ) : showCompanyForm ? (
-              <div className="space-y-4 border border-blue-200 rounded-lg p-4 bg-blue-50">
-                <div className="flex justify-between items-center">
-                  <h4 className="font-semibold text-blue-800">
-                    {editingCompany ? 'Editar Empresa' : 'Cadastrar Nova Empresa'}
-                  </h4>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={handleCancelCompany}
-                  >
-                    <X className="w-4 h-4" />
-                  </Button>
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="newCompanyName">Razão Social *</Label>
-                    <Input
-                      id="newCompanyName"
-                      value={companyFormData.name}
-                      onChange={(e) => handleCompanyInputChange('name', e.target.value)}
-                      placeholder="Digite a razão social"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="newCompanyDocument">CNPJ/CPF *</Label>
-                    <Input
-                      id="newCompanyDocument"
-                      value={companyFormData.document}
-                      onChange={(e) => handleCompanyInputChange('document', e.target.value)}
-                      placeholder="00.000.000/0000-00"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="newCompanyCity">Cidade *</Label>
-                    <Input
-                      id="newCompanyCity"
-                      value={companyFormData.city}
-                      onChange={(e) => handleCompanyInputChange('city', e.target.value)}
-                      placeholder="Digite a cidade"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="newCompanyState">UF *</Label>
-                    <Select value={companyFormData.state} onValueChange={(value) => handleCompanyInputChange('state', value)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione o estado" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="AC">AC</SelectItem>
-                        <SelectItem value="AL">AL</SelectItem>
-                        <SelectItem value="AP">AP</SelectItem>
-                        <SelectItem value="AM">AM</SelectItem>
-                        <SelectItem value="BA">BA</SelectItem>
-                        <SelectItem value="CE">CE</SelectItem>
-                        <SelectItem value="DF">DF</SelectItem>
-                        <SelectItem value="ES">ES</SelectItem>
-                        <SelectItem value="GO">GO</SelectItem>
-                        <SelectItem value="MA">MA</SelectItem>
-                        <SelectItem value="MT">MT</SelectItem>
-                        <SelectItem value="MS">MS</SelectItem>
-                        <SelectItem value="MG">MG</SelectItem>
-                        <SelectItem value="PA">PA</SelectItem>
-                        <SelectItem value="PB">PB</SelectItem>
-                        <SelectItem value="PR">PR</SelectItem>
-                        <SelectItem value="PE">PE</SelectItem>
-                        <SelectItem value="PI">PI</SelectItem>
-                        <SelectItem value="RJ">RJ</SelectItem>
-                        <SelectItem value="RN">RN</SelectItem>
-                        <SelectItem value="RS">RS</SelectItem>
-                        <SelectItem value="RO">RO</SelectItem>
-                        <SelectItem value="RR">RR</SelectItem>
-                        <SelectItem value="SC">SC</SelectItem>
-                        <SelectItem value="SP">SP</SelectItem>
-                        <SelectItem value="SE">SE</SelectItem>
-                        <SelectItem value="TO">TO</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                
-                <div className="flex justify-end">
-                  <Button
-                    type="button"
-                    onClick={handleSaveCompany}
-                    className="bg-blue-600 hover:bg-blue-700"
-                  >
-                    <Save className="w-4 h-4 mr-2" />
-                    {editingCompany ? 'Atualizar Empresa' : 'Salvar Empresa'}
-                  </Button>
-                </div>
-              </div>
             ) : (
               <div className="space-y-4">
                 <div className="flex flex-col sm:flex-row gap-2">
@@ -475,6 +393,116 @@ export function ContractForm({ onContractSave, managingUnits, companies, saveCom
                         Nenhuma empresa encontrada
                       </div>
                     )}
+                  </div>
+                )}
+
+                {/* Formulário de Cadastro de Empresa - Sem atualizar página */}
+                {(companyFormData.name || companyFormData.document || companyFormData.city || companyFormData.state) && (
+                  <div className="space-y-4 border border-blue-200 rounded-lg p-4 bg-blue-50">
+                    <div className="flex justify-between items-center">
+                      <h4 className="font-semibold text-blue-800">
+                        {editingCompany ? 'Editar Empresa' : 'Cadastrar Nova Empresa'}
+                      </h4>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleCancelCompany}
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="newCompanyName">Razão Social *</Label>
+                        <Input
+                          id="newCompanyName"
+                          value={companyFormData.name}
+                          onChange={(e) => handleCompanyInputChange('name', e.target.value)}
+                          placeholder="Digite a razão social"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="newCompanyDocument">CNPJ/CPF *</Label>
+                        <Input
+                          id="newCompanyDocument"
+                          value={companyFormData.document}
+                          onChange={(e) => handleCompanyInputChange('document', e.target.value)}
+                          placeholder="00.000.000/0000-00"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="newCompanyCity">Cidade *</Label>
+                        <Input
+                          id="newCompanyCity"
+                          value={companyFormData.city}
+                          onChange={(e) => handleCompanyInputChange('city', e.target.value)}
+                          placeholder="Digite a cidade"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="newCompanyState">UF *</Label>
+                        <Select value={companyFormData.state} onValueChange={(value) => handleCompanyInputChange('state', value)}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione o estado" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="AC">AC</SelectItem>
+                            <SelectItem value="AL">AL</SelectItem>
+                            <SelectItem value="AP">AP</SelectItem>
+                            <SelectItem value="AM">AM</SelectItem>
+                            <SelectItem value="BA">BA</SelectItem>
+                            <SelectItem value="CE">CE</SelectItem>
+                            <SelectItem value="DF">DF</SelectItem>
+                            <SelectItem value="ES">ES</SelectItem>
+                            <SelectItem value="GO">GO</SelectItem>
+                            <SelectItem value="MA">MA</SelectItem>
+                            <SelectItem value="MT">MT</SelectItem>
+                            <SelectItem value="MS">MS</SelectItem>
+                            <SelectItem value="MG">MG</SelectItem>
+                            <SelectItem value="PA">PA</SelectItem>
+                            <SelectItem value="PB">PB</SelectItem>
+                            <SelectItem value="PR">PR</SelectItem>
+                            <SelectItem value="PE">PE</SelectItem>
+                            <SelectItem value="PI">PI</SelectItem>
+                            <SelectItem value="RJ">RJ</SelectItem>
+                            <SelectItem value="RN">RN</SelectItem>
+                            <SelectItem value="RS">RS</SelectItem>
+                            <SelectItem value="RO">RO</SelectItem>
+                            <SelectItem value="RR">RR</SelectItem>
+                            <SelectItem value="SC">SC</SelectItem>
+                            <SelectItem value="SP">SP</SelectItem>
+                            <SelectItem value="SE">SE</SelectItem>
+                            <SelectItem value="TO">TO</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    
+                    <div className="flex justify-end">
+                      <Button
+                        type="button"
+                        onClick={handleSaveCompany}
+                        disabled={isSavingCompany}
+                        className="bg-blue-600 hover:bg-blue-700"
+                      >
+                        {isSavingCompany ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Salvando...
+                          </>
+                        ) : (
+                          <>
+                            <Save className="w-4 h-4 mr-2" />
+                            {editingCompany ? 'Atualizar Empresa' : 'Salvar Empresa'}
+                          </>
+                        )}
+                      </Button>
+                    </div>
                   </div>
                 )}
               </div>
