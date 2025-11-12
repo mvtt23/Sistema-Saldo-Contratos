@@ -59,7 +59,6 @@ export function ManagingUnits({ initialUnits, refetchData, saveUnit, deleteUnit,
   const [showFiscalForm, setShowFiscalForm] = useState(false);
   const [showFiscalSearch, setShowFiscalSearch] = useState(false);
   const [formData, setFormData] = useState({
-    id: '',
     name: '',
     responsible: '',
     code: '',
@@ -68,7 +67,6 @@ export function ManagingUnits({ initialUnits, refetchData, saveUnit, deleteUnit,
     phone: ''
   });
   const [programFormData, setProgramFormData] = useState({
-    id: '',
     name: '',
     unitId: ''
   });
@@ -146,7 +144,6 @@ export function ManagingUnits({ initialUnits, refetchData, saveUnit, deleteUnit,
     const isEditing = !!editingUnit;
     
     const unitData: Omit<ManagingUnit, 'programs'> = {
-      id: isEditing ? editingUnit!.id : '',
       name: formData.name,
       responsible: formData.responsible,
       code: formData.code || formData.name.split(' ').map(word => word.charAt(0)).join('').toUpperCase(),
@@ -154,6 +151,11 @@ export function ManagingUnits({ initialUnits, refetchData, saveUnit, deleteUnit,
       email: formData.email || `${formData.name.toLowerCase().replace(/\s+/g, '.')}@prefeitura.gov.br`,
       phone: formData.phone || '(11) 3333-0000',
     };
+
+    // Se for edição, incluir o ID
+    if (isEditing && editingUnit) {
+      unitData.id = editingUnit.id;
+    }
 
     const result = await saveUnit(unitData, isEditing);
 
@@ -173,10 +175,14 @@ export function ManagingUnits({ initialUnits, refetchData, saveUnit, deleteUnit,
     const isEditing = !!editingProgram;
     
     const programData: Omit<Program, 'id'> = {
-      id: isEditing ? editingProgram!.id : '',
       name: programFormData.name,
       unitId: programFormData.unitId
     };
+
+    // Se for edição, incluir o ID
+    if (isEditing && editingProgram) {
+      programData.id = editingProgram.id;
+    }
 
     const result = await saveProgram(programData, isEditing);
 
@@ -196,7 +202,6 @@ export function ManagingUnits({ initialUnits, refetchData, saveUnit, deleteUnit,
       setFiscalSearchTerm('');
     }
     setFormData({
-      id: unit.id,
       name: unit.name,
       responsible: unit.responsible,
       code: unit.code,
@@ -210,7 +215,6 @@ export function ManagingUnits({ initialUnits, refetchData, saveUnit, deleteUnit,
   const handleEditProgram = (program: Program) => {
     setEditingProgram(program);
     setProgramFormData({
-      id: program.id,
       name: program.name,
       unitId: program.unitId
     });
@@ -225,7 +229,7 @@ export function ManagingUnits({ initialUnits, refetchData, saveUnit, deleteUnit,
 
   const handleAddProgram = (unitId: string) => {
     setSelectedUnitForProgram(unitId);
-    setProgramFormData({ id: '', name: '', unitId });
+    setProgramFormData({ name: '', unitId });
     setEditingProgram(null);
     setIsProgramFormOpen(true);
   };
@@ -237,7 +241,7 @@ export function ManagingUnits({ initialUnits, refetchData, saveUnit, deleteUnit,
   };
 
   const handleCancel = () => {
-    setFormData({ id: '', name: '', responsible: '', code: '', fiscalId: '', email: '', phone: '' });
+    setFormData({ name: '', responsible: '', code: '', fiscalId: '', email: '', phone: '' });
     setSelectedFiscal(null);
     setFiscalSearchTerm('');
     setShowFiscalSearch(false);
@@ -247,7 +251,7 @@ export function ManagingUnits({ initialUnits, refetchData, saveUnit, deleteUnit,
   };
 
   const handleCancelProgram = () => {
-    setProgramFormData({ id: '', name: '', unitId: '' });
+    setProgramFormData({ name: '', unitId: '' });
     setIsProgramFormOpen(false);
     setEditingProgram(null);
     setSelectedUnitForProgram('');
