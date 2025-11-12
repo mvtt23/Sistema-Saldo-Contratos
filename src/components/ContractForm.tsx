@@ -248,7 +248,8 @@ export function ContractForm({ onContractSave, managingUnits, companies, saveCom
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {selectedCompany ? (
+            {/* Card verde da empresa selecionada - sempre aparece quando selectedCompany existe */}
+            {selectedCompany && (
               <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                 <div className="flex flex-col space-y-2">
                   <div className="flex justify-between items-start">
@@ -280,7 +281,9 @@ export function ContractForm({ onContractSave, managingUnits, companies, saveCom
                   </div>
                 </div>
               </div>
-            ) : showCompanyList ? (
+            )}
+
+            {showCompanyList ? (
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
                   <h4 className="font-semibold text-gray-800">Gerenciar Empresas Cadastradas</h4>
