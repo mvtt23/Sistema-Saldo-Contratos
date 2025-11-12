@@ -82,6 +82,22 @@ export function ContractForm({ onContractSave, managingUnits, companies, saveCom
       return;
     }
 
+    // Verificar se o documento já existe (exceto quando estiver editando)
+    if (!editingCompany) {
+      const existingCompany = companies.find(company => 
+        company.document === companyFormData.document
+      );
+      
+      if (existingCompany) {
+        toast({ 
+          variant: "destructive", 
+          title: "Erro", 
+          description: `Já existe uma empresa com o documento ${companyFormData.document}. Por favor, use um documento diferente ou selecione a empresa existente.` 
+        });
+        return;
+      }
+    }
+
     const isEditing = !!editingCompany;
     
     const dataToSave = isEditing 
@@ -540,7 +556,6 @@ export function ContractForm({ onContractSave, managingUnits, companies, saveCom
                         <SelectItem key={program.id} value={program.name}>{program.name}</SelectItem>
                       ))
                     ) : (
-                      // Corrigido: Usar um valor não vazio para o item desabilitado
                       <SelectItem value="placeholder-program" disabled>Nenhum programa disponível</SelectItem>
                     )}
                   </SelectContent>
