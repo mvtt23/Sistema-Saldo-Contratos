@@ -39,6 +39,7 @@ export function ManagingUnits({ initialUnits, refetchData, saveUnit, deleteUnit,
   const [fiscalSearchTerm, setFiscalSearchTerm] = useState('');
   const [showFiscalForm, setShowFiscalForm] = useState(false);
   const [showFiscalSearch, setShowFiscalSearch] = useState(false);
+  const [editingFiscal, setEditingFiscal] = useState<Fiscal | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     responsible: '',
@@ -96,6 +97,8 @@ export function ManagingUnits({ initialUnits, refetchData, saveUnit, deleteUnit,
   };
 
   const handleNewFiscal = async () => {
+    setEditingFiscal(null);
+    setFiscalFormData({ name: '', cpf: '', ordinance: '' });
     setShowFiscalForm(true);
     setShowFiscalSearch(false);
   };
@@ -132,28 +135,29 @@ export function ManagingUnits({ initialUnits, refetchData, saveUnit, deleteUnit,
   };
 
   const handleEditFiscal = async () => {
-    if (!selectedFiscal) return;
+    if (!editingFiscal) return;
     
     try {
-      const success = await updateFiscal(selectedFiscal.id, fiscalFormData);
+      const success = await updateFiscal(editingFiscal.id, fiscalFormData);
       
       if (success) {
         // Atualizar o fiscal na lista local
         setFiscals(prev => 
           prev.map(fiscal => 
-            fiscal.id === selectedFiscal.id 
+            fiscal.id === editingFiscal.id 
               ? { ...fiscal, ...fiscalFormData }
               : fiscal
           )
         );
         
         // Atualizar o formulário
-        setFormData(prev => ({ ...prev, fiscalId: selectedFiscal.id }));
+        setFormData(prev => ({ ...prev, fiscalId: editingFiscal.id }));
         
         // Fechar formulário
         setShowFiscalForm(false);
         setShowFiscalSearch(false);
         setFiscalFormData({ name: '', cpf: '', ordinance: '' });
+        setEditingFiscal(null);
       }
     } catch (error) {
       console.error('Erro ao atualizar fiscal:', error);
@@ -302,6 +306,7 @@ export function ManagingUnits({ initialUnits, refetchData, saveUnit, deleteUnit,
     setFiscalSearchTerm('');
     setShowFiscalSearch(false);
     setShowFiscalForm(false);
+    setEditingFiscal(null);
     setIsFormOpen(false);
     setEditingUnit(null);
   };
@@ -406,6 +411,7 @@ export function ManagingUnits({ initialUnits, refetchData, saveUnit, deleteUnit,
                             variant="outline"
                             size="sm"
                             onClick={() => {
+                              setEditingFiscal(selectedFiscal);
                               setFiscalFormData({
                                 name: selectedFiscal.name,
                                 cpf: selectedFiscal.cpf,
@@ -453,6 +459,7 @@ export function ManagingUnits({ initialUnits, refetchData, saveUnit, deleteUnit,
                           setShowFiscalForm(false);
                           setShowFiscalSearch(true);
                           setFiscalFormData({ name: '', cpf: '', ordinance: '' });
+                          setEditingFiscal(null);
                         }}
                       >
                         <X className="w-4 h-4" />
