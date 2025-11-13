@@ -7,7 +7,7 @@ interface UseContractManagement {
   saveContract: (contractData: Omit<Contract, 'id' | 'additives' | 'invoices'>) => Promise<Contract | null>;
   updateContract: (contract: Contract) => Promise<Contract | null>;
   deleteContract: (contractId: string) => Promise<boolean>;
-  saveUnit: (unitData: Omit<ManagingUnit, 'id' | 'programs'>, isEditing: boolean) => Promise<ManagingUnit | null>;
+  saveUnit: (unitData: Omit<ManagingUnit, 'programs'>, isEditing: boolean) => Promise<ManagingUnit | null>;
   deleteUnit: (unitId: string) => Promise<boolean>;
   saveProgram: (programData: Omit<Program, 'id'>, isEditing: boolean) => Promise<Program | null>;
   deleteProgram: (programId: string) => Promise<boolean>;
@@ -17,6 +17,10 @@ interface UseContractManagement {
   deleteAdditive: (additiveId: string) => Promise<boolean>;
   saveInvoice: (invoice: Omit<Invoice, 'id'>, contractId: string, isEditing: boolean) => Promise<Invoice | null>;
   deleteInvoice: (invoiceId: string) => Promise<boolean>;
+  saveFiscal: (fiscalData: { name: string; cpf: string; ordinance: string }) => Promise<string | null>;
+  updateFiscal: (fiscalId: string, fiscalData: { name: string; cpf: string; ordinance: string }) => Promise<boolean>;
+  deleteFiscal: (fiscalId: string) => Promise<boolean>;
+  getAllFiscals: () => Promise<Array<{ id: string; name: string; cpf: string; ordinance: string }>>;
 }
 
 // Função auxiliar para converter nomes de campos de camelCase para snake_case (Supabase)
@@ -118,7 +122,7 @@ export function useContractManagement(refetchData: () => void): UseContractManag
 
   // --- Unidades Gestoras ---
 
-  const saveUnit = useCallback(async (unitData: Omit<ManagingUnit, 'id' | 'programs'>, isEditing: boolean) => {
+  const saveUnit = useCallback(async (unitData: Omit<ManagingUnit, 'programs'>, isEditing: boolean) => {
     const payload = toSnakeCase(unitData);
     
     let query = supabase.from('managing_units');
@@ -319,6 +323,98 @@ export function useContractManagement(refetchData: () => void): UseContractManag
     return true;
   }, [toast]);
 
+  // --- Fiscais de Contratos ---
+
+  const saveFiscal = useCallback(async (fiscalData: { name: string; cpf: string; ordinance: string }) => {
+    try {
+      const payload = toSnakeCase(fiscalData);
+      
+      const { data, error } = await supabase
+        .from('fiscals')
+        .insert([payload])
+        .select()
+        .single();
+
+      if (error) {
+        toast({ title: "Erro ao salvar fiscal", description: error.message, variant: "destructive" });
+        return null;
+      }
+
+      refetchData();
+      toast({ title: "Sucesso", description: "Fiscal salvo com sucesso.", variant: "success" });
+      return data.id;
+    } catch (error) {
+      console.error('Erro ao salvar fiscal:', error);
+      toast({ title: "Erro", description: "Falha ao salvar fiscal.", variant: "destructive" });
+      return null;
+    }
+  }, [refetchData, toast]);
+
+  const updateFiscal = useCallback(async (fiscalId: string, fiscalData: { name: string; cpf: string; ordinance: string }) => {
+    try {
+      const payload = toSnakeCase(fiscalData);
+      
+      const { error } = await supabase
+        .from('fiscals')
+        .update(payload)
+        .eq('id', fiscalId);
+
+      if (error) {
+        toast({ title: "Erro ao atualizar fiscal", description: error.message, variant: "destructive" });
+        return false;
+      }
+
+      refetchData();
+      toast({ title: "Sucesso", description: "Fiscal atualizado com sucesso.", variant: "success" });
+      return true;
+    } catch (error) {
+      console.error('Erro ao atualizar fiscal:', error);
+      toast({ title: "Erro", description: "Falha ao atualizar fiscal.", variant: "destructive" });
+      return false;
+    }
+  }, [refetchData, toast]);
+
+  const deleteFiscal = useCallback(async (fiscalId: string) => {
+    try {
+      const { error } = await supabase
+        .from('fiscals')
+        .delete()
+        .eq('id', fiscalId);
+
+      if (error) {
+        toast({ title: "Erro ao excluir fiscal", description: error.message, variant: "destructive" });
+        return false;
+      }
+
+      refetchData();
+      toast({ title: "Sucesso", description: "Fiscal excluído com sucesso.", variant: "success" });
+      return true;
+    } catch (error) {
+      console.error('Erro ao excluir fiscal:', error);
+      toast({ title: "Erro", description: "Falha ao excluir fiscal.", variant: "destructive" });
+      return false;
+    }
+  }, [refetchData, toast]);
+
+  const getAllFiscals = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from('fiscals')
+        .select('*')
+        .order('name');
+
+      if (error) {
+        toast({ title: "Erro ao buscar fiscais", description: error.message, variant: "destructive" });
+        return [];
+      }
+
+      return (data || []).map(fiscal => toCamelCase(fiscal));
+    } catch (error) {
+      console.error('Erro ao buscar fiscais:', error);
+      toast({ title: "Erro", description: "Falha ao buscar fiscais.", variant: "destructive" });
+      return [];
+    }
+  }, [toast]);
 
   return {
     saveContract,
@@ -334,5 +430,9 @@ export function useContractManagement(refetchData: () => void): UseContractManag
     deleteAdditive,
     saveInvoice,
     deleteInvoice,
+    saveFiscal,
+    updateFiscal,
+    deleteFiscal,
+    getAllFiscals,
   };
 }

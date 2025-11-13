@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { ManagingUnit, Program } from "@/types/contract";
 import { Building2, Plus, Edit, Trash2, BookOpen, User, Search, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useContractManagement } from "@/hooks/useContractManagement";
 
 interface Fiscal {
   id: string;
@@ -13,28 +14,6 @@ interface Fiscal {
   cpf: string;
   ordinance: string;
 }
-
-// Mock data for fiscals (Fiscais não estão no Supabase, mantendo mock localmente)
-const mockFiscals: Fiscal[] = [
-  {
-    id: '1',
-    name: 'João Silva Santos',
-    cpf: '123.456.789-00',
-    ordinance: 'Portaria nº 001/2024'
-  },
-  {
-    id: '2',
-    name: 'Maria Oliveira Costa',
-    cpf: '987.654.321-00',
-    ordinance: 'Portaria nº 002/2024'
-  },
-  {
-    id: '3',
-    name: 'Carlos Eduardo Lima',
-    cpf: '456.789.123-00',
-    ordinance: 'Portaria nº 003/2024'
-  }
-];
 
 interface ManagingUnitsProps {
   initialUnits: ManagingUnit[];
@@ -47,8 +26,10 @@ interface ManagingUnitsProps {
 
 export function ManagingUnits({ initialUnits, refetchData, saveUnit, deleteUnit, saveProgram, deleteProgram }: ManagingUnitsProps) {
   const { toast } = useToast();
+  const { getAllFiscals, saveFiscal, updateFiscal, deleteFiscal } = useContractManagement(refetchData);
+  
   const [units, setUnits] = useState<ManagingUnit[]>(initialUnits);
-  const [fiscals, setFiscals] = useState<Fiscal[]>(mockFiscals);
+  const [fiscals, setFiscals] = useState<Fiscal[]>([]);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingUnit, setEditingUnit] = useState<ManagingUnit | null>(null);
   const [isProgramFormOpen, setIsProgramFormOpen] = useState(false);
@@ -76,10 +57,20 @@ export function ManagingUnits({ initialUnits, refetchData, saveUnit, deleteUnit,
     ordinance: ''
   });
 
-  // Atualiza o estado local quando a prop initialUnits muda (dados do Supabase)
-  useState(() => {
-    setUnits(initialUnits);
-  }, [initialUnits]);
+  // Carregar fiscais do banco de dados quando o componente for montado
+  useEffect(() => {
+    const loadFiscals = async () => {
+      try {
+        const loadedFiscals = await getAllFiscals();
+        setFiscals(loadedFiscals);
+      } catch (error) {
+        console.error('Erro ao carregar fiscais:', error);
+        toast({ title: "Erro", description: "Falha ao carregar fiscais.", variant: "destructive" });
+      }
+    };
+    
+    loadFiscals();
+  }, [getAllFiscals, toast]);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -104,26 +95,91 @@ export function ManagingUnits({ initialUnits, refetchData, saveUnit, deleteUnit,
     setShowFiscalSearch(false);
   };
 
-  const handleNewFiscal = () => {
+  const handleNewFiscal = async () => {
     setShowFiscalForm(true);
     setShowFiscalSearch(false);
   };
 
-  const handleSaveFiscal = () => {
-    // NOTE: Esta é uma função mockada, pois fiscais não estão no Supabase
-    const newFiscal: Fiscal = {
-      id: Date.now().toString(),
-      ...fiscalFormData
-    };
+  const handleSaveFiscal = async () => {
+    if (!fiscalFormData.name || !fiscalFormData.cpf || !fiscalFormData.ordinance) {
+      toast({ title: "Erro", description: "Preencha todos os campos obrigatórios do fiscal.", variant: "destructive" });
+      return;
+    }
+
+    try {
+      const fiscalId = await saveFiscal(fiscalFormData);
+      
+      if (fiscalId) {
+        // Adicionar o novo fiscal à lista local
+        const newFiscal: Fiscal = {
+          id: fiscalId,
+          ...fiscalFormData
+        };
+        
+        setFiscals(prev => [...prev, newFiscal]);
+        setSelectedFiscal(newFiscal);
+        setFiscalSearchTerm(newFiscal.name);
+        setFormData(prev => ({ ...prev, fiscalId: fiscalId }));
+        
+        // Limpar formulário
+        setFiscalFormData({ name: '', cpf: '', ordinance: '' });
+        setShowFiscalForm(false);
+        setShowFiscalSearch(false);
+      }
+    } catch (error) {
+      console.error('Erro ao salvar fiscal:', error);
+    }
+  };
+
+  const handleEditFiscal = async () => {
+    if (!selectedFiscal) return;
     
-    setFiscals(prev => [...prev, newFiscal]);
-    setSelectedFiscal(newFiscal);
-    setFiscalSearchTerm(newFiscal.name);
-    setFormData(prev => ({ ...prev, fiscalId: newFiscal.id }));
-    
-    setFiscalFormData({ name: '', cpf: '', ordinance: '' });
-    setShowFiscalForm(false);
-    setShowFiscalSearch(false);
+    try {
+      const success = await updateFiscal(selectedFiscal.id, fiscalFormData);
+      
+      if (success) {
+        // Atualizar o fiscal na lista local
+        setFiscals(prev => 
+          prev.map(fiscal => 
+            fiscal.id === selectedFiscal.id 
+              ? { ...fiscal, ...fiscalFormData }
+              : fiscal
+          )
+        );
+        
+        // Atualizar o formulário
+        setFormData(prev => ({ ...prev, fiscalId: selectedFiscal.id }));
+        
+        // Fechar formulário
+        setShowFiscalForm(false);
+        setShowFiscalSearch(false);
+        setFiscalFormData({ name: '', cpf: '', ordinance: '' });
+      }
+    } catch (error) {
+      console.error('Erro ao atualizar fiscal:', error);
+    }
+  };
+
+  const handleDeleteFiscal = async (fiscalId: string) => {
+    if (confirm('Tem certeza que deseja excluir este fiscal?')) {
+      try {
+        const success = await deleteFiscal(fiscalId);
+        
+        if (success) {
+          // Remover o fiscal da lista local
+          setFiscals(prev => prev.filter(fiscal => fiscal.id !== fiscalId));
+          
+          // Se o fiscal excluído estava selecionado, limpar a seleção
+          if (selectedFiscal?.id === fiscalId) {
+            setSelectedFiscal(null);
+            setFiscalSearchTerm('');
+            setFormData(prev => ({ ...prev, fiscalId: '' }));
+          }
+        }
+      } catch (error) {
+        console.error('Erro ao excluir fiscal:', error);
+      }
+    }
   };
 
   const handleClearFiscal = () => {
@@ -344,22 +400,51 @@ export function ManagingUnits({ initialUnits, refetchData, saveUnit, deleteUnit,
                           <p className="text-sm text-green-600">CPF: {selectedFiscal.cpf}</p>
                           <p className="text-sm text-green-600">{selectedFiscal.ordinance}</p>
                         </div>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={handleClearFiscal}
-                        >
-                          <X className="w-4 h-4 mr-1" />
-                          Alterar
-                        </Button>
+                        <div className="flex gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setFiscalFormData({
+                                name: selectedFiscal.name,
+                                cpf: selectedFiscal.cpf,
+                                ordinance: selectedFiscal.ordinance
+                              });
+                              setShowFiscalForm(true);
+                              setShowFiscalSearch(false);
+                            }}
+                          >
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleDeleteFiscal(selectedFiscal.id)}
+                            className="text-red-600 hover:text-red-700"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={handleClearFiscal}
+                          >
+                            <X className="w-4 h-4 mr-1" />
+                            Alterar
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   </div>
                 ) : showFiscalForm ? (
                   <div className="space-y-4 border border-blue-200 rounded-lg p-4 bg-blue-50 mt-2">
                     <div className="flex justify-between items-center">
-                      <h4 className="font-semibold text-blue-800">Cadastrar Novo Fiscal</h4>
+                      <h4 className="font-semibold text-blue-800">
+                        {editingFiscal ? 'Editar Fiscal' : 'Cadastrar Novo Fiscal'}
+                      </h4>
                       <Button
                         type="button"
                         variant="outline"
@@ -411,10 +496,10 @@ export function ManagingUnits({ initialUnits, refetchData, saveUnit, deleteUnit,
                     <div className="flex justify-end">
                       <Button
                         type="button"
-                        onClick={handleSaveFiscal}
+                        onClick={editingFiscal ? handleEditFiscal : handleSaveFiscal}
                         className="bg-blue-600 hover:bg-blue-700"
                       >
-                        Salvar Fiscal
+                        {editingFiscal ? 'Atualizar Fiscal' : 'Salvar Fiscal'}
                       </Button>
                     </div>
                   </div>
