@@ -223,10 +223,10 @@ export function useContractManagement(refetchData: () => void): UseContractManag
       return null;
     }
 
-    refetchData();
+    // REMOVIDO: refetchData();
     toast({ title: "Sucesso", description: `Empresa ${isEditing ? 'atualizada' : 'salva'} com sucesso.`, variant: "success" });
     return toCamelCase(data) as Company;
-  }, [refetchData, toast]);
+  }, [toast]);
 
   const deleteCompany = useCallback(async (companyId: string) => {
     const { error } = await supabase
@@ -238,8 +238,9 @@ export function useContractManagement(refetchData: () => void): UseContractManag
       toast({ title: "Erro ao excluir empresa", description: error.message, variant: "destructive" });
       return false;
     }
+    // REMOVIDO: refetchData();
     return true;
-  }, [refetchData, toast]);
+  }, [toast]);
 
   // --- Aditivos e Notas Fiscais (Sub-tabelas) ---
   
@@ -340,7 +341,6 @@ export function useContractManagement(refetchData: () => void): UseContractManag
         return null;
       }
 
-      // REMOVIDO: refetchData();
       toast({ title: "Sucesso", description: "Fiscal salvo com sucesso.", variant: "success" });
       return data.id;
     } catch (error) {
@@ -364,7 +364,6 @@ export function useContractManagement(refetchData: () => void): UseContractManag
         return false;
       }
 
-      // REMOVIDO: refetchData();
       toast({ title: "Sucesso", description: "Fiscal atualizado com sucesso.", variant: "success" });
       return true;
     } catch (error) {
@@ -386,7 +385,6 @@ export function useContractManagement(refetchData: () => void): UseContractManag
         return false;
       }
 
-      // REMOVIDO: refetchData();
       toast({ title: "Sucesso", description: "Fiscal excluído com sucesso.", variant: "success" });
       return true;
     } catch (error) {

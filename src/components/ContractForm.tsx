@@ -20,6 +20,7 @@ interface ContractFormProps {
 
 export function ContractForm({ onContractSave, managingUnits, companies, saveCompany, deleteCompany }: ContractFormProps) {
   const { toast } = useToast();
+  const [localCompanies, setLocalCompanies] = useState<Company[]>(companies);
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
   const [companySearchTerm, setCompanySearchTerm] = useState('');
   const [showCompanyList, setShowCompanyList] = useState(false);
@@ -45,6 +46,11 @@ export function ContractForm({ onContractSave, managingUnits, companies, saveCom
     object: '',
     value: ''
   });
+
+  // Sincronizar empresas iniciais com o estado local
+  useEffect(() => {
+    setLocalCompanies(companies);
+  }, [companies]);
 
   const selectedUnit = managingUnits.find(unit => unit.name === formData.managingUnit);
   const availablePrograms = selectedUnit ? selectedUnit.programs : [];
@@ -81,7 +87,7 @@ export function ContractForm({ onContractSave, managingUnits, companies, saveCom
     }
   };
 
-  const filteredCompanies = companies.filter(company =>
+  const filteredCompanies = localCompanies.filter(company =>
     company.name.toLowerCase().includes(companySearchTerm.toLowerCase()) ||
     company.document.replace(/\D/g, '').includes(companySearchTerm.replace(/\D/g, ''))
   );
@@ -108,7 +114,7 @@ export function ContractForm({ onContractSave, managingUnits, companies, saveCom
 
     // Verificar se o documento já existe (exceto quando estiver editando)
     if (!editingCompany) {
-      const existingCompany = companies.find(company => 
+      const existingCompany = localCompanies.find(company => 
         company.document.replace(/\D/g, '') === companyFormData.document.replace(/\D/g, '')
       );
       
@@ -116,7 +122,7 @@ export function ContractForm({ onContractSave, managingUnits, companies, saveCom
         toast({ 
           variant: "destructive", 
           title: "Erro", 
-          description: "empresa já cadastrada" 
+          description: "Empresa já cadastrada" 
         });
         return;
       }
@@ -126,31 +132,36 @@ export function ContractForm({ onContractSave, managingUnits, companies, saveCom
       const isEditing = !!editingCompany;
       
       const dataToSave = isEditing 
-        ? { ...editingCompany, ...companyFormData } as Company
+        ? { id: editingCompany!.id, ...companyFormData } as Company
         : companyFormData as Omit<Company, 'id'>;
 
       const result = await saveCompany(dataToSave, isEditing);
 
       if (result) {
-        // Seleciona automaticamente a empresa recém-cadastrada
+        // 1. Atualizar lista local de empresas
+        setLocalCompanies(prev => {
+          if (isEditing) {
+            return prev.map(c => c.id === result.id ? result : c);
+          } else {
+            return [...prev, result];
+          }
+        });
+        
+        // 2. Seleciona automaticamente a empresa recém-cadastrada/editada
         setSelectedCompany(result);
         setCompanySearchTerm(result.name);
         
-        // Força uma atualização do estado para garantir que o card apareça
-        setTimeout(() => {
-          setSelectedCompany(result);
-        }, 50);
-        
-        // Fecha o formulário de cadastro
+        // 3. Fecha o formulário de cadastro
         setShowCompanyForm(false);
+        setEditingCompany(null);
         
-        // Limpa o formulário
+        // 4. Limpa o formulário de dados temporários
         setCompanyFormData({ name: '', document: '', city: '', state: '' });
         
-        // Mostra feedback visual rápido
+        // 5. Mostra feedback visual rápido
         toast({ 
           title: "Sucesso!", 
-          description: `Empresa "${result.name}" cadastrada e selecionada com sucesso.` 
+          description: `Empresa "${result.name}" ${isEditing ? 'atualizada' : 'cadastrada'} e selecionada com sucesso.` 
         });
       }
     } catch (error) {
@@ -162,6 +173,7 @@ export function ContractForm({ onContractSave, managingUnits, companies, saveCom
   const handleCancelCompany = () => {
     setCompanyFormData({ name: '', document: '', city: '', state: '' });
     setShowCompanyForm(false);
+    setEditingCompany(null);
   };
 
   const handleClearCompany = () => {
@@ -190,10 +202,16 @@ export function ContractForm({ onContractSave, managingUnits, companies, saveCom
   const handleDeleteCompany = async (companyId: string) => {
     if (confirm('Tem certeza que deseja excluir esta empresa?')) {
       const success = await deleteCompany(companyId);
-      if (success && selectedCompany?.id === companyId) {
-        setSelectedCompany(null);
-        setCompanySearchTerm('');
-        setShowCompanyForm(false);
+      if (success) {
+        // Atualiza lista local
+        setLocalCompanies(prev => prev.filter(c => c.id !== companyId));
+        
+        if (selectedCompany?.id === companyId) {
+          setSelectedCompany(null);
+          setCompanySearchTerm('');
+          setShowCompanyForm(false);
+        }
+        toast({ title: "Sucesso", description: "Empresa excluída com sucesso.", variant: "success" });
       }
     }
   };
@@ -328,8 +346,8 @@ export function ContractForm({ onContractSave, managingUnits, companies, saveCom
                 </div>
 
                 <div className="max-h-96 overflow-y-auto space-y-2">
-                  {companies.length > 0 ? (
-                    companies.map(company => (
+                  {localCompanies.length > 0 ? (
+                    localCompanies.map(company => (
                       <div
                         key={company.id}
                         className="flex justify-between items-center p-4 border rounded-lg hover:bg-gray-50"
@@ -398,7 +416,7 @@ export function ContractForm({ onContractSave, managingUnits, companies, saveCom
                   </Button>
                 </div>
                 
-                {companySearchTerm && (
+                {companySearchTerm && !selectedCompany && (
                   <div className="max-h-48 overflow-y-auto border rounded-lg">
                     {filteredCompanies.length > 0 ? (
                       filteredCompanies.map(company => (
