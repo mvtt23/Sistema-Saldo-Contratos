@@ -340,7 +340,7 @@ export function useContractManagement(refetchData: () => void): UseContractManag
         return null;
       }
 
-      refetchData();
+      // REMOVIDO: refetchData();
       toast({ title: "Sucesso", description: "Fiscal salvo com sucesso.", variant: "success" });
       return data.id;
     } catch (error) {
@@ -348,7 +348,7 @@ export function useContractManagement(refetchData: () => void): UseContractManag
       toast({ title: "Erro", description: "Falha ao salvar fiscal.", variant: "destructive" });
       return null;
     }
-  }, [refetchData, toast]);
+  }, [toast]);
 
   const updateFiscal = useCallback(async (fiscalId: string, fiscalData: { name: string; cpf: string; ordinance: string }) => {
     try {
@@ -364,7 +364,7 @@ export function useContractManagement(refetchData: () => void): UseContractManag
         return false;
       }
 
-      refetchData();
+      // REMOVIDO: refetchData();
       toast({ title: "Sucesso", description: "Fiscal atualizado com sucesso.", variant: "success" });
       return true;
     } catch (error) {
@@ -372,7 +372,7 @@ export function useContractManagement(refetchData: () => void): UseContractManag
       toast({ title: "Erro", description: "Falha ao atualizar fiscal.", variant: "destructive" });
       return false;
     }
-  }, [refetchData, toast]);
+  }, [toast]);
 
   const deleteFiscal = useCallback(async (fiscalId: string) => {
     try {
@@ -386,7 +386,7 @@ export function useContractManagement(refetchData: () => void): UseContractManag
         return false;
       }
 
-      refetchData();
+      // REMOVIDO: refetchData();
       toast({ title: "Sucesso", description: "Fiscal excluído com sucesso.", variant: "success" });
       return true;
     } catch (error) {
@@ -394,7 +394,7 @@ export function useContractManagement(refetchData: () => void): UseContractManag
       toast({ title: "Erro", description: "Falha ao excluir fiscal.", variant: "destructive" });
       return false;
     }
-  }, [refetchData, toast]);
+  }, [toast]);
 
   const getAllFiscals = useCallback(async () => {
     try {

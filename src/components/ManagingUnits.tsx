@@ -58,6 +58,11 @@ export function ManagingUnits({ initialUnits, refetchData, saveUnit, deleteUnit,
     ordinance: ''
   });
 
+  // Atualizar unidades quando initialUnits mudar (após refetch global de unidades/programas)
+  useEffect(() => {
+    setUnits(initialUnits);
+  }, [initialUnits]);
+
   // Carregar fiscais do banco de dados quando o componente for montado
   useEffect(() => {
     const loadFiscals = async () => {
@@ -142,16 +147,23 @@ export function ManagingUnits({ initialUnits, refetchData, saveUnit, deleteUnit,
       
       if (success) {
         // Atualizar o fiscal na lista local
+        const updatedFiscal: Fiscal = {
+          id: editingFiscal.id,
+          ...fiscalFormData
+        };
+
         setFiscals(prev => 
           prev.map(fiscal => 
             fiscal.id === editingFiscal.id 
-              ? { ...fiscal, ...fiscalFormData }
+              ? updatedFiscal
               : fiscal
           )
         );
         
-        // Atualizar o formulário
-        setFormData(prev => ({ ...prev, fiscalId: editingFiscal.id }));
+        // Atualizar o fiscal selecionado e o formulário
+        setSelectedFiscal(updatedFiscal);
+        setFiscalSearchTerm(updatedFiscal.name);
+        setFormData(prev => ({ ...prev, fiscalId: updatedFiscal.id }));
         
         // Fechar formulário
         setShowFiscalForm(false);
