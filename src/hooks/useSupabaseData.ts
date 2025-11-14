@@ -75,6 +75,7 @@ export function useSupabaseData(): SupabaseData {
 
   const fetchData = useCallback(async () => {
     if (!user?.prefeitura_id) {
+      // Se o usuário não estiver logado ou o ID da prefeitura não estiver disponível, paramos.
       setError("ID da prefeitura não encontrado. Faça login novamente.");
       setLoading(false);
       return;
@@ -87,6 +88,8 @@ export function useSupabaseData(): SupabaseData {
 
     try {
       // 1. Fetch Contracts (incluindo aditivos e notas fiscais)
+      // Usamos o filtro explícito 'eq' para garantir que apenas os dados da prefeitura correta sejam buscados,
+      // complementando a segurança do RLS.
       const { data: contractsData, error: contractsError } = await supabase
         .from('contracts')
         .select(`
@@ -94,7 +97,7 @@ export function useSupabaseData(): SupabaseData {
           additives (*),
           invoices (*)
         `)
-        .eq('prefeitura_id', prefeituraId); // FILTRO
+        .eq('prefeitura_id', prefeituraId); // FILTRO EXPLÍCITO
 
       if (contractsError) throw contractsError;
       
@@ -105,7 +108,7 @@ export function useSupabaseData(): SupabaseData {
           *,
           programs (*)
         `)
-        .eq('prefeitura_id', prefeituraId); // FILTRO
+        .eq('prefeitura_id', prefeituraId); // FILTRO EXPLÍCITO
 
       if (unitsError) throw unitsError;
 
@@ -113,7 +116,7 @@ export function useSupabaseData(): SupabaseData {
       const { data: companiesData, error: companiesError } = await supabase
         .from('companies')
         .select('*')
-        .eq('prefeitura_id', prefeituraId); // FILTRO
+        .eq('prefeitura_id', prefeituraId); // FILTRO EXPLÍCITO
 
       if (companiesError) throw companiesError;
 

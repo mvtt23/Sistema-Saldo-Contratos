@@ -54,11 +54,16 @@ const toCamelCase = (obj: any) => {
 export function useContractManagement(refetchData: () => void): UseContractManagement {
   const { toast } = useToast();
   const { user } = useAuth();
-  const prefeituraId = user?.prefeitura_id || 'santa-quiteria'; // Alterado para 'santa-quiteria'
+  const prefeituraId = user?.prefeitura_id; // Removendo o fallback fixo
 
   // --- Contratos ---
 
   const saveContract = useCallback(async (contractData: Omit<Contract, 'id' | 'additives' | 'invoices'>) => {
+    if (!prefeituraId) {
+      toast({ title: "Erro de Autenticação", description: "ID da prefeitura não encontrado. Faça login novamente.", variant: "destructive" });
+      return null;
+    }
+    
     const payload = toSnakeCase({
       ...contractData,
       prefeituraId, // Adicionando prefeitura_id
@@ -86,6 +91,11 @@ export function useContractManagement(refetchData: () => void): UseContractManag
   }, [refetchData, toast, prefeituraId]);
 
   const updateContract = useCallback(async (contract: Contract) => {
+    if (!prefeituraId) {
+      toast({ title: "Erro de Autenticação", description: "ID da prefeitura não encontrado. Faça login novamente.", variant: "destructive" });
+      return null;
+    }
+    
     const payload = toSnakeCase({
       ...contract,
       prefeituraId, // Garantindo que o ID da prefeitura seja mantido
@@ -97,6 +107,7 @@ export function useContractManagement(refetchData: () => void): UseContractManag
       .from('contracts')
       .update(payload)
       .eq('id', contract.id)
+      .eq('prefeitura_id', prefeituraId) // Adicionando filtro de segurança
       .select()
       .single();
 
@@ -110,6 +121,11 @@ export function useContractManagement(refetchData: () => void): UseContractManag
   }, [refetchData, toast, prefeituraId]);
 
   const deleteContract = useCallback(async (contractId: string) => {
+    if (!prefeituraId) {
+      toast({ title: "Erro de Autenticação", description: "ID da prefeitura não encontrado. Faça login novamente.", variant: "destructive" });
+      return false;
+    }
+    
     const { error } = await supabase
       .from('contracts')
       .delete()
@@ -129,12 +145,17 @@ export function useContractManagement(refetchData: () => void): UseContractManag
   // --- Unidades Gestoras ---
 
   const saveUnit = useCallback(async (unitData: Omit<ManagingUnit, 'programs'>, isEditing: boolean) => {
+    if (!prefeituraId) {
+      toast({ title: "Erro de Autenticação", description: "ID da prefeitura não encontrado. Faça login novamente.", variant: "destructive" });
+      return null;
+    }
+    
     const payload = toSnakeCase({ ...unitData, prefeituraId }); // Adicionando prefeitura_id
     
     let query = supabase.from('managing_units');
     
     if (isEditing && unitData.id) {
-      query = query.update(payload).eq('id', unitData.id);
+      query = query.update(payload).eq('id', unitData.id).eq('prefeitura_id', prefeituraId);
     } else {
       query = query.insert([payload]);
     }
@@ -152,6 +173,11 @@ export function useContractManagement(refetchData: () => void): UseContractManag
   }, [refetchData, toast, prefeituraId]);
 
   const deleteUnit = useCallback(async (unitId: string) => {
+    if (!prefeituraId) {
+      toast({ title: "Erro de Autenticação", description: "ID da prefeitura não encontrado. Faça login novamente.", variant: "destructive" });
+      return false;
+    }
+    
     const { error } = await supabase
       .from('managing_units')
       .delete()
@@ -171,12 +197,17 @@ export function useContractManagement(refetchData: () => void): UseContractManag
   // --- Programas ---
 
   const saveProgram = useCallback(async (programData: Omit<Program, 'id'>, isEditing: boolean) => {
+    if (!prefeituraId) {
+      toast({ title: "Erro de Autenticação", description: "ID da prefeitura não encontrado. Faça login novamente.", variant: "destructive" });
+      return null;
+    }
+    
     const payload = toSnakeCase({ ...programData, prefeituraId }); // Adicionando prefeitura_id
     
     let query = supabase.from('programs');
     
     if (isEditing && (programData as Program).id) {
-      query = query.update(payload).eq('id', (programData as Program).id);
+      query = query.update(payload).eq('id', (programData as Program).id).eq('prefeitura_id', prefeituraId);
     } else {
       query = query.insert([payload]);
     }
@@ -194,6 +225,11 @@ export function useContractManagement(refetchData: () => void): UseContractManag
   }, [refetchData, toast, prefeituraId]);
 
   const deleteProgram = useCallback(async (programId: string) => {
+    if (!prefeituraId) {
+      toast({ title: "Erro de Autenticação", description: "ID da prefeitura não encontrado. Faça login novamente.", variant: "destructive" });
+      return false;
+    }
+    
     const { error } = await supabase
       .from('programs')
       .delete()
@@ -213,12 +249,17 @@ export function useContractManagement(refetchData: () => void): UseContractManag
   // --- Empresas (Companies) ---
 
   const saveCompany = useCallback(async (companyData: Omit<Company, 'id'>, isEditing: boolean) => {
+    if (!prefeituraId) {
+      toast({ title: "Erro de Autenticação", description: "ID da prefeitura não encontrado. Faça login novamente.", variant: "destructive" });
+      return null;
+    }
+    
     const payload = toSnakeCase({ ...companyData, prefeituraId }); // Adicionando prefeitura_id
     
     let query = supabase.from('companies');
     
     if (isEditing && (companyData as Company).id) {
-      query = query.update(payload).eq('id', (companyData as Company).id);
+      query = query.update(payload).eq('id', (companyData as Company).id).eq('prefeitura_id', prefeituraId);
     } else {
       query = query.insert([payload]);
     }
@@ -237,6 +278,11 @@ export function useContractManagement(refetchData: () => void): UseContractManag
   }, [toast, prefeituraId]);
 
   const deleteCompany = useCallback(async (companyId: string) => {
+    if (!prefeituraId) {
+      toast({ title: "Erro de Autenticação", description: "ID da prefeitura não encontrado. Faça login novamente.", variant: "destructive" });
+      return false;
+    }
+    
     const { error } = await supabase
       .from('companies')
       .delete()
@@ -254,6 +300,11 @@ export function useContractManagement(refetchData: () => void): UseContractManag
   // --- Aditivos e Notas Fiscais (Sub-tabelas) ---
   
   const saveAdditive = useCallback(async (additive: Omit<Additive, 'id'>, contractId: string, isEditing: boolean) => {
+    if (!prefeituraId) {
+      toast({ title: "Erro de Autenticação", description: "ID da prefeitura não encontrado. Faça login novamente.", variant: "destructive" });
+      return null;
+    }
+    
     const payload = toSnakeCase({
       ...additive,
       prefeituraId, // Adicionando prefeitura_id
@@ -264,7 +315,7 @@ export function useContractManagement(refetchData: () => void): UseContractManag
     let query = supabase.from('additives');
     
     if (isEditing && (additive as Additive).id) {
-      query = query.update(payload).eq('id', (additive as Additive).id);
+      query = query.update(payload).eq('id', (additive as Additive).id).eq('prefeitura_id', prefeituraId);
     } else {
       query = query.insert([payload]);
     }
@@ -282,6 +333,11 @@ export function useContractManagement(refetchData: () => void): UseContractManag
   }, [toast, prefeituraId]);
 
   const deleteAdditive = useCallback(async (additiveId: string) => {
+    if (!prefeituraId) {
+      toast({ title: "Erro de Autenticação", description: "ID da prefeitura não encontrado. Faça login novamente.", variant: "destructive" });
+      return false;
+    }
+    
     const { error } = await supabase
       .from('additives')
       .delete()
@@ -296,6 +352,11 @@ export function useContractManagement(refetchData: () => void): UseContractManag
   }, [toast, prefeituraId]);
 
   const saveInvoice = useCallback(async (invoice: Omit<Invoice, 'id'>, contractId: string, isEditing: boolean) => {
+    if (!prefeituraId) {
+      toast({ title: "Erro de Autenticação", description: "ID da prefeitura não encontrado. Faça login novamente.", variant: "destructive" });
+      return null;
+    }
+    
     const payload = toSnakeCase({
       ...invoice,
       prefeituraId, // Adicionando prefeitura_id
@@ -306,7 +367,7 @@ export function useContractManagement(refetchData: () => void): UseContractManag
     let query = supabase.from('invoices');
     
     if (isEditing && (invoice as Invoice).id) {
-      query = query.update(payload).eq('id', (invoice as Invoice).id);
+      query = query.update(payload).eq('id', (invoice as Invoice).id).eq('prefeitura_id', prefeituraId);
     } else {
       query = query.insert([payload]);
     }
@@ -324,6 +385,11 @@ export function useContractManagement(refetchData: () => void): UseContractManag
   }, [toast, prefeituraId]);
 
   const deleteInvoice = useCallback(async (invoiceId: string) => {
+    if (!prefeituraId) {
+      toast({ title: "Erro de Autenticação", description: "ID da prefeitura não encontrado. Faça login novamente.", variant: "destructive" });
+      return false;
+    }
+    
     const { error } = await supabase
       .from('invoices')
       .delete()
@@ -340,6 +406,11 @@ export function useContractManagement(refetchData: () => void): UseContractManag
   // --- Fiscais de Contratos ---
 
   const saveFiscal = useCallback(async (fiscalData: { name: string; cpf: string; ordinance: string }) => {
+    if (!prefeituraId) {
+      toast({ title: "Erro de Autenticação", description: "ID da prefeitura não encontrado. Faça login novamente.", variant: "destructive" });
+      return null;
+    }
+    
     try {
       const payload = toSnakeCase({ ...fiscalData, prefeituraId }); // Adicionando prefeitura_id
       
@@ -364,6 +435,11 @@ export function useContractManagement(refetchData: () => void): UseContractManag
   }, [toast, prefeituraId]);
 
   const updateFiscal = useCallback(async (fiscalId: string, fiscalData: { name: string; cpf: string; ordinance: string }) => {
+    if (!prefeituraId) {
+      toast({ title: "Erro de Autenticação", description: "ID da prefeitura não encontrado. Faça login novamente.", variant: "destructive" });
+      return false;
+    }
+    
     try {
       const payload = toSnakeCase(fiscalData);
       
@@ -388,6 +464,11 @@ export function useContractManagement(refetchData: () => void): UseContractManag
   }, [toast, prefeituraId]);
 
   const deleteFiscal = useCallback(async (fiscalId: string) => {
+    if (!prefeituraId) {
+      toast({ title: "Erro de Autenticação", description: "ID da prefeitura não encontrado. Faça login novamente.", variant: "destructive" });
+      return false;
+    }
+    
     try {
       const { error } = await supabase
         .from('fiscals')
@@ -410,6 +491,8 @@ export function useContractManagement(refetchData: () => void): UseContractManag
   }, [toast, prefeituraId]);
 
   const getAllFiscals = useCallback(async () => {
+    if (!prefeituraId) return [];
+    
     try {
       const { data, error } = await supabase
         .from('fiscals')
