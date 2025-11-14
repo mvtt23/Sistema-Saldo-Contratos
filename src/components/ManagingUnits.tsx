@@ -7,12 +7,14 @@ import { ManagingUnit, Program } from "@/types/contract";
 import { Building2, Plus, Edit, Trash2, BookOpen, User, Search, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useContractManagement } from "@/hooks/useContractManagement";
+import { useAuth } from "@/contexts/AuthContext"; // Importando useAuth
 
 interface Fiscal {
   id: string;
   name: string;
   cpf: string;
   ordinance: string;
+  prefeituraId: string; // Adicionado
 }
 
 interface ManagingUnitsProps {
@@ -26,6 +28,9 @@ interface ManagingUnitsProps {
 
 export function ManagingUnits({ initialUnits, refetchData, saveUnit, deleteUnit, saveProgram, deleteProgram }: ManagingUnitsProps) {
   const { toast } = useToast();
+  const { user } = useAuth();
+  const isSuperAdmin = user?.is_admin;
+  
   const { getAllFiscals, saveFiscal, updateFiscal, deleteFiscal } = useContractManagement(refetchData);
   
   const [units, setUnits] = useState<ManagingUnit[]>(initialUnits);
@@ -40,28 +45,43 @@ export function ManagingUnits({ initialUnits, refetchData, saveUnit, deleteUnit,
   const [showFiscalForm, setShowFiscalForm] = useState(false);
   const [showFiscalSearch, setShowFiscalSearch] = useState(false);
   const [editingFiscal, setEditingFiscal] = useState<Fiscal | null>(null);
+  
+  const initialPrefeituraId = user?.prefeitura_id || '';
+
   const [formData, setFormData] = useState({
     name: '',
     responsible: '',
     code: '',
     fiscalId: '',
     email: '',
-    phone: ''
+    phone: '',
+    prefeituraId: initialPrefeituraId // Adicionado
   });
   const [programFormData, setProgramFormData] = useState({
     name: '',
-    unitId: ''
+    unitId: '',
+    prefeituraId: initialPrefeituraId // Adicionado
   });
   const [fiscalFormData, setFiscalFormData] = useState({
     name: '',
     cpf: '',
-    ordinance: ''
+    ordinance: '',
+    prefeituraId: initialPrefeituraId // Adicionado
   });
 
   // Atualizar unidades quando initialUnits mudar (após refetch global de unidades/programas)
   useEffect(() => {
     setUnits(initialUnits);
   }, [initialUnits]);
+
+  // Sincronizar prefeituraId se o usuário mudar
+  useEffect(() => {
+    if (user?.prefeitura_id) {
+      setFormData(prev => ({ ...prev, prefeituraId: user.prefeitura_id }));
+      setProgramFormData(prev => ({ ...prev, prefeituraId: user.prefeitura_id }));
+      setFiscalFormData(prev => ({ ...prev, prefeituraId: user.prefeitura_id }));
+    }
+  }, [user?.prefeitura_id]);
 
   // Carregar fiscais do banco de dados quando o componente for montado
   useEffect(() => {
@@ -103,7 +123,7 @@ export function ManagingUnits({ initialUnits, refetchData, saveUnit, deleteUnit,
 
   const handleNewFiscal = async () => {
     setEditingFiscal(null);
-    setFiscalFormData({ name: '', cpf: '', ordinance: '' });
+    setFiscalFormData({ name: '', cpf: '', ordinance: '', prefeituraId: user?.prefeitura_id || '' });
     setShowFiscalForm(true);
     setShowFiscalSearch(false);
   };
@@ -111,6 +131,11 @@ export function ManagingUnits({ initialUnits, refetchData, saveUnit, deleteUnit,
   const handleSaveFiscal = async () => {
     if (!fiscalFormData.name || !fiscalFormData.cpf || !fiscalFormData.ordinance) {
       toast({ title: "Erro", description: "Preencha todos os campos obrigatórios do fiscal.", variant: "destructive" });
+      return;
+    }
+    
+    if (isSuperAdmin && !fiscalFormData.prefeituraId) {
+      toast({ variant: "destructive", title: "Erro", description: "O campo Prefeitura ID é obrigatório para Super Administradores." });
       return;
     }
 
@@ -130,7 +155,7 @@ export function ManagingUnits({ initialUnits, refetchData, saveUnit, deleteUnit,
         setFormData(prev => ({ ...prev, fiscalId: fiscalId }));
         
         // Limpar formulário
-        setFiscalFormData({ name: '', cpf: '', ordinance: '' });
+        setFiscalFormData({ name: '', cpf: '', ordinance: '', prefeituraId: user?.prefeitura_id || '' });
         setShowFiscalForm(false);
         setShowFiscalSearch(false);
       }
@@ -141,6 +166,11 @@ export function ManagingUnits({ initialUnits, refetchData, saveUnit, deleteUnit,
 
   const handleEditFiscal = async () => {
     if (!editingFiscal) return;
+    
+    if (isSuperAdmin && !fiscalFormData.prefeituraId) {
+      toast({ variant: "destructive", title: "Erro", description: "O campo Prefeitura ID é obrigatório para Super Administradores." });
+      return;
+    }
     
     try {
       const success = await updateFiscal(editingFiscal.id, fiscalFormData);
@@ -168,7 +198,7 @@ export function ManagingUnits({ initialUnits, refetchData, saveUnit, deleteUnit,
         // Fechar formulário
         setShowFiscalForm(false);
         setShowFiscalSearch(false);
-        setFiscalFormData({ name: '', cpf: '', ordinance: '' });
+        setFiscalFormData({ name: '', cpf: '', ordinance: '', prefeituraId: user?.prefeitura_id || '' });
         setEditingFiscal(null);
       }
     } catch (error) {
@@ -212,6 +242,11 @@ export function ManagingUnits({ initialUnits, refetchData, saveUnit, deleteUnit,
       toast({ title: "Erro", description: "Preencha os campos obrigatórios (Nome, Responsável, Fiscal).", variant: "destructive" });
       return;
     }
+    
+    if (isSuperAdmin && !formData.prefeituraId) {
+      toast({ variant: "destructive", title: "Erro", description: "O campo Prefeitura ID é obrigatório para Super Administradores." });
+      return;
+    }
 
     const isEditing = !!editingUnit;
     
@@ -222,6 +257,7 @@ export function ManagingUnits({ initialUnits, refetchData, saveUnit, deleteUnit,
       fiscalId: formData.fiscalId,
       email: formData.email || `${formData.name.toLowerCase().replace(/\s+/g, '.')}@prefeitura.gov.br`,
       phone: formData.phone || '(11) 3333-0000',
+      prefeituraId: formData.prefeituraId, // Usando o ID do formulário
     };
 
     // Se for edição, incluir o ID
@@ -243,12 +279,18 @@ export function ManagingUnits({ initialUnits, refetchData, saveUnit, deleteUnit,
       toast({ title: "Erro", description: "Preencha o nome do programa e selecione a secretaria.", variant: "destructive" });
       return;
     }
+    
+    if (isSuperAdmin && !programFormData.prefeituraId) {
+      toast({ variant: "destructive", title: "Erro", description: "O campo Prefeitura ID é obrigatório para Super Administradores." });
+      return;
+    }
 
     const isEditing = !!editingProgram;
     
     const programData: Omit<Program, 'id'> = {
       name: programFormData.name,
-      unitId: programFormData.unitId
+      unitId: programFormData.unitId,
+      prefeituraId: programFormData.prefeituraId, // Usando o ID do formulário
     };
 
     // Se for edição, incluir o ID
@@ -279,7 +321,8 @@ export function ManagingUnits({ initialUnits, refetchData, saveUnit, deleteUnit,
       code: unit.code,
       fiscalId: unit.fiscalId || '',
       email: unit.email || '',
-      phone: unit.phone || ''
+      phone: unit.phone || '',
+      prefeituraId: unit.prefeituraId // Carrega o ID existente
     });
     setIsFormOpen(true);
   };
@@ -288,7 +331,8 @@ export function ManagingUnits({ initialUnits, refetchData, saveUnit, deleteUnit,
     setEditingProgram(program);
     setProgramFormData({
       name: program.name,
-      unitId: program.unitId
+      unitId: program.unitId,
+      prefeituraId: program.prefeituraId // Carrega o ID existente
     });
     setIsProgramFormOpen(true);
   };
@@ -301,7 +345,7 @@ export function ManagingUnits({ initialUnits, refetchData, saveUnit, deleteUnit,
 
   const handleAddProgram = (unitId: string) => {
     setSelectedUnitForProgram(unitId);
-    setProgramFormData({ name: '', unitId });
+    setProgramFormData({ name: '', unitId, prefeituraId: user?.prefeitura_id || '' });
     setEditingProgram(null);
     setIsProgramFormOpen(true);
   };
@@ -313,7 +357,15 @@ export function ManagingUnits({ initialUnits, refetchData, saveUnit, deleteUnit,
   };
 
   const handleCancel = () => {
-    setFormData({ name: '', responsible: '', code: '', fiscalId: '', email: '', phone: '' });
+    setFormData({ 
+      name: '', 
+      responsible: '', 
+      code: '', 
+      fiscalId: '', 
+      email: '', 
+      phone: '', 
+      prefeituraId: user?.prefeitura_id || '' 
+    });
     setSelectedFiscal(null);
     setFiscalSearchTerm('');
     setShowFiscalSearch(false);
@@ -324,7 +376,7 @@ export function ManagingUnits({ initialUnits, refetchData, saveUnit, deleteUnit,
   };
 
   const handleCancelProgram = () => {
-    setProgramFormData({ name: '', unitId: '' });
+    setProgramFormData({ name: '', unitId: '', prefeituraId: user?.prefeitura_id || '' });
     setIsProgramFormOpen(false);
     setEditingProgram(null);
     setSelectedUnitForProgram('');
@@ -360,6 +412,23 @@ export function ManagingUnits({ initialUnits, refetchData, saveUnit, deleteUnit,
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Campo Prefeitura ID para Super Admin */}
+              {isSuperAdmin && (
+                <div>
+                  <Label htmlFor="unitPrefeituraId">Prefeitura ID *</Label>
+                  <Input
+                    id="unitPrefeituraId"
+                    value={formData.prefeituraId}
+                    onChange={(e) => handleInputChange('prefeituraId', e.target.value)}
+                    placeholder="Digite o ID da prefeitura (ex: santa-quiteria)"
+                    required
+                  />
+                  <p className="text-xs text-blue-700 mt-1">
+                    Esta unidade será vinculada a esta Prefeitura ID.
+                  </p>
+                </div>
+              )}
+              
               <div className="grid grid-cols-1 gap-4">
                 <div>
                   <Label htmlFor="name">Nome da Secretaria *</Label>
@@ -416,6 +485,9 @@ export function ManagingUnits({ initialUnits, refetchData, saveUnit, deleteUnit,
                           <h4 className="font-semibold text-green-800">{selectedFiscal.name}</h4>
                           <p className="text-sm text-green-600">CPF: {selectedFiscal.cpf}</p>
                           <p className="text-sm text-green-600">{selectedFiscal.ordinance}</p>
+                          {isSuperAdmin && (
+                            <p className="text-xs text-green-700 mt-1">ID: {selectedFiscal.prefeituraId}</p>
+                          )}
                         </div>
                         <div className="flex gap-2">
                           <Button
@@ -427,7 +499,8 @@ export function ManagingUnits({ initialUnits, refetchData, saveUnit, deleteUnit,
                               setFiscalFormData({
                                 name: selectedFiscal.name,
                                 cpf: selectedFiscal.cpf,
-                                ordinance: selectedFiscal.ordinance
+                                ordinance: selectedFiscal.ordinance,
+                                prefeituraId: selectedFiscal.prefeituraId
                               });
                               setShowFiscalForm(true);
                               setShowFiscalSearch(false);
@@ -470,7 +543,7 @@ export function ManagingUnits({ initialUnits, refetchData, saveUnit, deleteUnit,
                         onClick={() => {
                           setShowFiscalForm(false);
                           setShowFiscalSearch(true);
-                          setFiscalFormData({ name: '', cpf: '', ordinance: '' });
+                          setFiscalFormData({ name: '', cpf: '', ordinance: '', prefeituraId: user?.prefeitura_id || '' });
                           setEditingFiscal(null);
                         }}
                       >
@@ -511,6 +584,19 @@ export function ManagingUnits({ initialUnits, refetchData, saveUnit, deleteUnit,
                         required
                       />
                     </div>
+                    
+                    {isSuperAdmin && (
+                      <div>
+                        <Label htmlFor="fiscalPrefeituraId">Prefeitura ID *</Label>
+                        <Input
+                          id="fiscalPrefeituraId"
+                          value={fiscalFormData.prefeituraId}
+                          onChange={(e) => handleFiscalInputChange('prefeituraId', e.target.value)}
+                          placeholder="Digite o ID da prefeitura"
+                          required
+                        />
+                      </div>
+                    )}
                     
                     <div className="flex justify-end">
                       <Button
@@ -597,6 +683,19 @@ export function ManagingUnits({ initialUnits, refetchData, saveUnit, deleteUnit,
           </CardHeader>
           <CardContent>
             <form onSubmit={handleProgramSubmit} className="space-y-4">
+              {isSuperAdmin && (
+                <div>
+                  <Label htmlFor="programPrefeituraId">Prefeitura ID *</Label>
+                  <Input
+                    id="programPrefeituraId"
+                    value={programFormData.prefeituraId}
+                    onChange={(e) => handleProgramInputChange('prefeituraId', e.target.value)}
+                    placeholder="Digite o ID da prefeitura"
+                    required
+                  />
+                </div>
+              )}
+              
               <div className="grid grid-cols-1 gap-4">
                 <div>
                   <Label htmlFor="programName">Nome do Programa *</Label>
@@ -652,6 +751,9 @@ export function ManagingUnits({ initialUnits, refetchData, saveUnit, deleteUnit,
                     <p className="text-sm text-blue-600 font-medium bg-blue-50 px-2 py-1 rounded inline-block">
                       {unit.code}
                     </p>
+                    {isSuperAdmin && (
+                      <p className="text-xs text-gray-500 mt-1">ID: {unit.prefeituraId}</p>
+                    )}
                   </div>
                   <div className="flex space-x-2 flex-wrap">
                     <Button

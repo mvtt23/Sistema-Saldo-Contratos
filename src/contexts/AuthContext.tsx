@@ -14,8 +14,9 @@ interface User {
   username: string;
   role: string;
   is_active: boolean;
+  is_admin: boolean; // Adicionado
   permissions: Permission[];
-  prefeitura_id: string; // Adicionado
+  prefeitura_id: string;
 }
 
 interface AuthContextType {
@@ -56,10 +57,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { error: { message: 'Sistema de autenticação não configurado. Por favor, contate o administrador.' } };
       }
       
-      // Buscar o usuário pelo username
+      // Buscar o usuário pelo username, incluindo is_admin
       const { data: userData, error: userError } = await supabase
         .from('users')
-        .select('id, username, role, is_active, password, prefeitura_id') // Buscando prefeitura_id
+        .select('id, username, role, is_active, password, prefeitura_id, is_admin') // Buscando is_admin
         .eq('username', username)
         .maybeSingle();
 
@@ -101,8 +102,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         username: userData.username,
         role: userData.role,
         is_active: userData.is_active,
+        is_admin: userData.is_admin, // Adicionando is_admin
         permissions: permissionsData || [],
-        prefeitura_id: userData.prefeitura_id, // Adicionando prefeitura_id
+        prefeitura_id: userData.prefeitura_id,
       };
 
       console.log('Login successful for user:', username);
@@ -123,7 +125,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const hasPermission = (module: string, action: 'view' | 'edit' | 'create' | 'delete') => {
     if (!user) return false;
-    if (user.role === 'admin') return true;
+    // Super Admin tem acesso total, ignorando permissões específicas
+    if (user.is_admin) return true; 
+    if (user.role === 'admin') return true; // Mantendo a regra de role 'admin' por compatibilidade, mas 'is_admin' é o novo superpoder.
 
     const permission = user.permissions.find(p => p.module === module);
     if (!permission) return false;
@@ -140,6 +144,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const canAccessModule = (module: string) => {
     if (!user) return false;
+    if (user.is_admin) return true; // Super Admin pode acessar tudo
     if (user.role === 'admin') return true;
 
     const permission = user.permissions.find(p => p.module === module);

@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Company, Contract, ManagingUnit } from "@/types/contract";
 import { Building2, User, FileText, Save, Search, Plus, X, Edit2, Trash2, CheckCircle } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext"; // Importando useAuth
 
 interface ContractFormProps {
   onContractSave: (contractData: Omit<Contract, 'id' | 'additives' | 'invoices'>) => void;
@@ -20,6 +21,9 @@ interface ContractFormProps {
 
 export function ContractForm({ onContractSave, managingUnits, companies, saveCompany, deleteCompany }: ContractFormProps) {
   const { toast } = useToast();
+  const { user } = useAuth(); // Usando useAuth
+  const isSuperAdmin = user?.is_admin;
+  
   const [localCompanies, setLocalCompanies] = useState<Company[]>(companies);
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
   const [companySearchTerm, setCompanySearchTerm] = useState('');
@@ -31,7 +35,8 @@ export function ContractForm({ onContractSave, managingUnits, companies, saveCom
     name: '',
     document: '',
     city: '',
-    state: ''
+    state: '',
+    prefeituraId: user?.prefeitura_id || '' // Inicializa com o ID do usuário logado
   });
 
   const [formData, setFormData] = useState({
@@ -44,13 +49,22 @@ export function ContractForm({ onContractSave, managingUnits, companies, saveCom
     startDate: '',
     endDate: '',
     object: '',
-    value: ''
+    value: '',
+    prefeituraId: user?.prefeitura_id || '' // Inicializa com o ID do usuário logado
   });
 
   // Sincronizar empresas iniciais com o estado local
   useEffect(() => {
     setLocalCompanies(companies);
   }, [companies]);
+
+  // Sincronizar prefeituraId se o usuário mudar (embora o App.tsx só renderize se houver user)
+  useEffect(() => {
+    if (user?.prefeitura_id) {
+      setFormData(prev => ({ ...prev, prefeituraId: user.prefeitura_id }));
+      setCompanyFormData(prev => ({ ...prev, prefeituraId: user.prefeitura_id }));
+    }
+  }, [user?.prefeitura_id]);
 
   const selectedUnit = managingUnits.find(unit => unit.name === formData.managingUnit);
   const availablePrograms = selectedUnit ? selectedUnit.programs : [];
@@ -101,7 +115,13 @@ export function ContractForm({ onContractSave, managingUnits, companies, saveCom
 
   const handleNewCompany = () => {
     setEditingCompany(null);
-    setCompanyFormData({ name: '', document: '', city: '', state: '' });
+    setCompanyFormData({ 
+      name: '', 
+      document: '', 
+      city: '', 
+      state: '',
+      prefeituraId: user?.prefeitura_id || '' // Garante o ID padrão
+    });
     setShowCompanyForm(true);
     setShowCompanyList(false);
   };
@@ -109,6 +129,11 @@ export function ContractForm({ onContractSave, managingUnits, companies, saveCom
   const handleSaveCompany = async () => {
     if (!companyFormData.name || !companyFormData.document || !companyFormData.city || !companyFormData.state) {
       toast({ variant: "destructive", title: "Erro", description: "Preencha todos os campos obrigatórios da empresa." });
+      return;
+    }
+    
+    if (isSuperAdmin && !companyFormData.prefeituraId) {
+      toast({ variant: "destructive", title: "Erro", description: "O campo Prefeitura ID é obrigatório para Super Administradores." });
       return;
     }
 
@@ -156,7 +181,7 @@ export function ContractForm({ onContractSave, managingUnits, companies, saveCom
         setEditingCompany(null);
         
         // 4. Limpa o formulário de dados temporários
-        setCompanyFormData({ name: '', document: '', city: '', state: '' });
+        setCompanyFormData({ name: '', document: '', city: '', state: '', prefeituraId: user?.prefeitura_id || '' });
         
         // 5. Mostra feedback visual rápido
         toast({ 
@@ -171,7 +196,7 @@ export function ContractForm({ onContractSave, managingUnits, companies, saveCom
   };
 
   const handleCancelCompany = () => {
-    setCompanyFormData({ name: '', document: '', city: '', state: '' });
+    setCompanyFormData({ name: '', document: '', city: '', state: '', prefeituraId: user?.prefeitura_id || '' });
     setShowCompanyForm(false);
     setEditingCompany(null);
   };
@@ -193,7 +218,8 @@ export function ContractForm({ onContractSave, managingUnits, companies, saveCom
       name: company.name,
       document: company.document,
       city: company.city,
-      state: company.state
+      state: company.state,
+      prefeituraId: company.prefeituraId // Carrega o ID existente
     });
     setShowCompanyForm(true);
     setShowCompanyList(false);
@@ -219,7 +245,7 @@ export function ContractForm({ onContractSave, managingUnits, companies, saveCom
   const handleBackToSearch = () => {
     setShowCompanyList(false);
     setShowCompanyForm(false);
-    setCompanyFormData({ name: '', document: '', city: '', state: '' });
+    setCompanyFormData({ name: '', document: '', city: '', state: '', prefeituraId: user?.prefeitura_id || '' });
     setEditingCompany(null);
   };
 
@@ -233,6 +259,11 @@ export function ContractForm({ onContractSave, managingUnits, companies, saveCom
     
     if (!formData.contractNumber || !formData.modality || !formData.managingUnit || !formData.startDate || !formData.endDate || !formData.object || !formData.value) {
       toast({ variant: "destructive", title: "Erro", description: "Preencha todos os campos obrigatórios do contrato." });
+      return;
+    }
+    
+    if (isSuperAdmin && !formData.prefeituraId) {
+      toast({ variant: "destructive", title: "Erro", description: "O campo Prefeitura ID é obrigatório para Super Administradores." });
       return;
     }
 
@@ -257,6 +288,7 @@ export function ContractForm({ onContractSave, managingUnits, companies, saveCom
       startDate: new Date(formData.startDate),
       endDate: new Date(formData.endDate),
       status: 'active' as const,
+      prefeituraId: formData.prefeituraId, // Usando o ID do formulário (manual para admin, automático para outros)
     };
 
     // Salvar o contrato usando a função Supabase
@@ -272,7 +304,8 @@ export function ContractForm({ onContractSave, managingUnits, companies, saveCom
       startDate: '',
       endDate: '',
       object: '',
-      value: ''
+      value: '',
+      prefeituraId: user?.prefeitura_id || ''
     });
     setSelectedCompany(null);
     setCompanySearchTerm('');
@@ -286,6 +319,30 @@ export function ContractForm({ onContractSave, managingUnits, companies, saveCom
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Campo Prefeitura ID para Super Admin */}
+        {isSuperAdmin && (
+          <Card className="border-yellow-200 bg-yellow-50">
+            <CardHeader>
+              <CardTitle className="text-lg md:text-xl text-yellow-800">
+                Configuração de Prefeitura (Admin)
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Label htmlFor="contractPrefeituraId">Prefeitura ID *</Label>
+              <Input
+                id="contractPrefeituraId"
+                value={formData.prefeituraId}
+                onChange={(e) => handleInputChange('prefeituraId', e.target.value)}
+                placeholder="Digite o ID da prefeitura (ex: santa-quiteria)"
+                required
+              />
+              <p className="text-xs text-yellow-700 mt-1">
+                Este contrato será vinculado a esta Prefeitura ID.
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Seleção/Cadastro da Empresa - Layout responsivo */}
         <Card>
           <CardHeader>
@@ -304,6 +361,9 @@ export function ContractForm({ onContractSave, managingUnits, companies, saveCom
                       <h4 className="font-semibold text-green-800">{selectedCompany.name}</h4>
                       <p className="text-sm text-green-600">CNPJ/CPF: {selectedCompany.document}</p>
                       <p className="text-sm text-green-600">{selectedCompany.city}/{selectedCompany.state}</p>
+                      {isSuperAdmin && (
+                        <p className="text-xs text-green-700 mt-1">ID: {selectedCompany.prefeituraId}</p>
+                      )}
                     </div>
                     <div className="flex gap-2 flex-wrap">
                       <Button
@@ -357,6 +417,9 @@ export function ContractForm({ onContractSave, managingUnits, companies, saveCom
                           <div className="text-sm text-gray-600">
                             {company.document} - {company.city}/{company.state}
                           </div>
+                          {isSuperAdmin && (
+                            <div className="text-xs text-gray-500">ID: {company.prefeituraId}</div>
+                          )}
                         </div>
                         <div className="flex gap-2">
                           <Button
@@ -525,6 +588,19 @@ export function ContractForm({ onContractSave, managingUnits, companies, saveCom
                         </Select>
                       </div>
                     </div>
+                    
+                    {isSuperAdmin && (
+                      <div>
+                        <Label htmlFor="companyPrefeituraId">Prefeitura ID *</Label>
+                        <Input
+                          id="companyPrefeituraId"
+                          value={companyFormData.prefeituraId}
+                          onChange={(e) => handleCompanyInputChange('prefeituraId', e.target.value)}
+                          placeholder="Digite o ID da prefeitura"
+                          required
+                        />
+                      </div>
+                    )}
                     
                     <div className="flex justify-end">
                       <Button

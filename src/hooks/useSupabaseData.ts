@@ -74,49 +74,63 @@ export function useSupabaseData(): SupabaseData {
   const { toast } = useToast();
 
   const fetchData = useCallback(async () => {
-    if (!user?.prefeitura_id) {
-      // Se o usuário não estiver logado ou o ID da prefeitura não estiver disponível, paramos.
+    if (!user?.prefeitura_id && !user?.is_admin) {
+      // Se o usuário não for admin e não tiver prefeitura_id, paramos.
       setError("ID da prefeitura não encontrado. Faça login novamente.");
       setLoading(false);
       return;
     }
     
     const prefeituraId = user.prefeitura_id;
+    const isSuperAdmin = user.is_admin;
 
     setLoading(true);
     setError(null);
 
     try {
       // 1. Fetch Contracts (incluindo aditivos e notas fiscais)
-      // Usamos o filtro explícito 'eq' para garantir que apenas os dados da prefeitura correta sejam buscados,
-      // complementando a segurança do RLS.
-      const { data: contractsData, error: contractsError } = await supabase
+      let contractsQuery = supabase
         .from('contracts')
         .select(`
           *,
           additives (*),
           invoices (*)
-        `)
-        .eq('prefeitura_id', prefeituraId); // FILTRO EXPLÍCITO
+        `);
+        
+      if (!isSuperAdmin) {
+        contractsQuery = contractsQuery.eq('prefeitura_id', prefeituraId);
+      }
+
+      const { data: contractsData, error: contractsError } = await contractsQuery;
 
       if (contractsError) throw contractsError;
       
       // 2. Fetch Managing Units (incluindo programas)
-      const { data: unitsData, error: unitsError } = await supabase
+      let unitsQuery = supabase
         .from('managing_units')
         .select(`
           *,
           programs (*)
-        `)
-        .eq('prefeitura_id', prefeituraId); // FILTRO EXPLÍCITO
+        `);
+        
+      if (!isSuperAdmin) {
+        unitsQuery = unitsQuery.eq('prefeitura_id', prefeituraId);
+      }
+
+      const { data: unitsData, error: unitsError } = await unitsQuery;
 
       if (unitsError) throw unitsError;
 
       // 3. Fetch Companies
-      const { data: companiesData, error: companiesError } = await supabase
+      let companiesQuery = supabase
         .from('companies')
-        .select('*')
-        .eq('prefeitura_id', prefeituraId); // FILTRO EXPLÍCITO
+        .select('*');
+        
+      if (!isSuperAdmin) {
+        companiesQuery = companiesQuery.eq('prefeitura_id', prefeituraId);
+      }
+
+      const { data: companiesData, error: companiesError } = await companiesQuery;
 
       if (companiesError) throw companiesError;
 
@@ -140,13 +154,13 @@ export function useSupabaseData(): SupabaseData {
     } finally {
       setLoading(false);
     }
-  }, [toast, user?.prefeitura_id]);
+  }, [toast, user?.prefeitura_id, user?.is_admin]);
 
   useEffect(() => {
-    if (user?.prefeitura_id) {
+    if (user?.prefeitura_id || user?.is_admin) {
       fetchData();
     }
-  }, [fetchData, user?.prefeitura_id]);
+  }, [fetchData, user?.prefeitura_id, user?.is_admin]);
 
   return { contracts, managingUnits, companies, loading, error, refetch: fetchData };
 }

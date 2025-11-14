@@ -4,6 +4,17 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext'; // Importando useAuth
 import { Contract, ManagingUnit, Company, Program, Additive, Invoice } from '@/types/contract';
 
+interface FiscalData {
+  name: string;
+  cpf: string;
+  ordinance: string;
+  prefeituraId: string;
+}
+
+interface Fiscal extends FiscalData {
+  id: string;
+}
+
 interface UseContractManagement {
   saveContract: (contractData: Omit<Contract, 'id' | 'additives' | 'invoices'>) => Promise<Contract | null>;
   updateContract: (contract: Contract) => Promise<Contract | null>;
@@ -18,10 +29,10 @@ interface UseContractManagement {
   deleteAdditive: (additiveId: string) => Promise<boolean>;
   saveInvoice: (invoice: Omit<Invoice, 'id'>, contractId: string, isEditing: boolean) => Promise<Invoice | null>;
   deleteInvoice: (invoiceId: string) => Promise<boolean>;
-  saveFiscal: (fiscalData: { name: string; cpf: string; ordinance: string }) => Promise<string | null>;
-  updateFiscal: (fiscalId: string, fiscalData: { name: string; cpf: string; ordinance: string }) => Promise<boolean>;
+  saveFiscal: (fiscalData: FiscalData) => Promise<string | null>;
+  updateFiscal: (fiscalId: string, fiscalData: FiscalData) => Promise<boolean>;
   deleteFiscal: (fiscalId: string) => Promise<boolean>;
-  getAllFiscals: () => Promise<Array<{ id: string; name: string; cpf: string; ordinance: string }>>;
+  getAllFiscals: () => Promise<Fiscal[]>;
 }
 
 // Função auxiliar para converter nomes de campos de camelCase para snake_case (Supabase)
@@ -54,19 +65,23 @@ const toCamelCase = (obj: any) => {
 export function useContractManagement(refetchData: () => void): UseContractManagement {
   const { toast } = useToast();
   const { user } = useAuth();
-  const prefeituraId = user?.prefeitura_id; // Removendo o fallback fixo
+  const prefeituraId = user?.prefeitura_id; 
+  const isSuperAdmin = user?.is_admin;
 
   // --- Contratos ---
 
   const saveContract = useCallback(async (contractData: Omit<Contract, 'id' | 'additives' | 'invoices'>) => {
-    if (!prefeituraId) {
+    // Se não for Super Admin, usa o ID do usuário logado. Se for Super Admin, usa o ID do formulário.
+    const finalPrefeituraId = isSuperAdmin ? contractData.prefeituraId : prefeituraId;
+    
+    if (!finalPrefeituraId) {
       toast({ title: "Erro de Autenticação", description: "ID da prefeitura não encontrado. Faça login novamente.", variant: "destructive" });
       return null;
     }
     
     const payload = toSnakeCase({
       ...contractData,
-      prefeituraId, // Adicionando prefeitura_id
+      prefeituraId: finalPrefeituraId, // Usando o ID final
       originalValue: contractData.originalValue,
       currentValue: contractData.currentValue,
       usedValue: contractData.usedValue,
@@ -88,17 +103,19 @@ export function useContractManagement(refetchData: () => void): UseContractManag
 
     refetchData();
     return toCamelCase(data) as Contract;
-  }, [refetchData, toast, prefeituraId]);
+  }, [refetchData, toast, prefeituraId, isSuperAdmin]);
 
   const updateContract = useCallback(async (contract: Contract) => {
-    if (!prefeituraId) {
+    const finalPrefeituraId = isSuperAdmin ? contract.prefeituraId : prefeituraId;
+    
+    if (!finalPrefeituraId) {
       toast({ title: "Erro de Autenticação", description: "ID da prefeitura não encontrado. Faça login novamente.", variant: "destructive" });
       return null;
     }
     
     const payload = toSnakeCase({
       ...contract,
-      prefeituraId, // Garantindo que o ID da prefeitura seja mantido
+      prefeituraId: finalPrefeituraId,
       startDate: contract.startDate.toISOString().split('T')[0],
       endDate: contract.endDate.toISOString().split('T')[0],
     });
@@ -107,7 +124,7 @@ export function useContractManagement(refetchData: () => void): UseContractManag
       .from('contracts')
       .update(payload)
       .eq('id', contract.id)
-      .eq('prefeitura_id', prefeituraId) // Adicionando filtro de segurança
+      .eq('prefeitura_id', finalPrefeituraId) // Adicionando filtro de segurança
       .select()
       .single();
 
@@ -118,10 +135,10 @@ export function useContractManagement(refetchData: () => void): UseContractManag
 
     refetchData();
     return toCamelCase(data) as Contract;
-  }, [refetchData, toast, prefeituraId]);
+  }, [refetchData, toast, prefeituraId, isSuperAdmin]);
 
   const deleteContract = useCallback(async (contractId: string) => {
-    if (!prefeituraId) {
+    if (!prefeituraId && !isSuperAdmin) {
       toast({ title: "Erro de Autenticação", description: "ID da prefeitura não encontrado. Faça login novamente.", variant: "destructive" });
       return false;
     }
@@ -130,7 +147,7 @@ export function useContractManagement(refetchData: () => void): UseContractManag
       .from('contracts')
       .delete()
       .eq('id', contractId)
-      .eq('prefeitura_id', prefeituraId); // Filtrando por prefeitura_id
+      .eq('prefeitura_id', prefeituraId); // RLS cuidará do Super Admin, mas filtramos por segurança
 
     if (error) {
       toast({ title: "Erro ao excluir contrato", description: error.message, variant: "destructive" });
@@ -140,22 +157,24 @@ export function useContractManagement(refetchData: () => void): UseContractManag
     refetchData();
     toast({ title: "Sucesso", description: "Contrato excluído com sucesso.", variant: "success" });
     return true;
-  }, [refetchData, toast, prefeituraId]);
+  }, [refetchData, toast, prefeituraId, isSuperAdmin]);
 
   // --- Unidades Gestoras ---
 
   const saveUnit = useCallback(async (unitData: Omit<ManagingUnit, 'programs'>, isEditing: boolean) => {
-    if (!prefeituraId) {
+    const finalPrefeituraId = isSuperAdmin ? unitData.prefeituraId : prefeituraId;
+    
+    if (!finalPrefeituraId) {
       toast({ title: "Erro de Autenticação", description: "ID da prefeitura não encontrado. Faça login novamente.", variant: "destructive" });
       return null;
     }
     
-    const payload = toSnakeCase({ ...unitData, prefeituraId }); // Adicionando prefeitura_id
+    const payload = toSnakeCase({ ...unitData, prefeituraId: finalPrefeituraId }); 
     
     let query = supabase.from('managing_units');
     
     if (isEditing && unitData.id) {
-      query = query.update(payload).eq('id', unitData.id).eq('prefeitura_id', prefeituraId);
+      query = query.update(payload).eq('id', unitData.id).eq('prefeitura_id', finalPrefeituraId);
     } else {
       query = query.insert([payload]);
     }
@@ -170,10 +189,10 @@ export function useContractManagement(refetchData: () => void): UseContractManag
     refetchData();
     toast({ title: "Sucesso", description: `Unidade ${isEditing ? 'atualizada' : 'salva'} com sucesso.`, variant: "success" });
     return toCamelCase(data) as ManagingUnit;
-  }, [refetchData, toast, prefeituraId]);
+  }, [refetchData, toast, prefeituraId, isSuperAdmin]);
 
   const deleteUnit = useCallback(async (unitId: string) => {
-    if (!prefeituraId) {
+    if (!prefeituraId && !isSuperAdmin) {
       toast({ title: "Erro de Autenticação", description: "ID da prefeitura não encontrado. Faça login novamente.", variant: "destructive" });
       return false;
     }
@@ -182,7 +201,7 @@ export function useContractManagement(refetchData: () => void): UseContractManag
       .from('managing_units')
       .delete()
       .eq('id', unitId)
-      .eq('prefeitura_id', prefeituraId); // Filtrando por prefeitura_id
+      .eq('prefeitura_id', prefeituraId); 
 
     if (error) {
       toast({ title: "Erro ao excluir unidade", description: error.message, variant: "destructive" });
@@ -192,22 +211,24 @@ export function useContractManagement(refetchData: () => void): UseContractManag
     refetchData();
     toast({ title: "Sucesso", description: "Unidade gestora excluída com sucesso.", variant: "success" });
     return true;
-  }, [refetchData, toast, prefeituraId]);
+  }, [refetchData, toast, prefeituraId, isSuperAdmin]);
 
   // --- Programas ---
 
   const saveProgram = useCallback(async (programData: Omit<Program, 'id'>, isEditing: boolean) => {
-    if (!prefeituraId) {
+    const finalPrefeituraId = isSuperAdmin ? programData.prefeituraId : prefeituraId;
+    
+    if (!finalPrefeituraId) {
       toast({ title: "Erro de Autenticação", description: "ID da prefeitura não encontrado. Faça login novamente.", variant: "destructive" });
       return null;
     }
     
-    const payload = toSnakeCase({ ...programData, prefeituraId }); // Adicionando prefeitura_id
+    const payload = toSnakeCase({ ...programData, prefeituraId: finalPrefeituraId }); 
     
     let query = supabase.from('programs');
     
     if (isEditing && (programData as Program).id) {
-      query = query.update(payload).eq('id', (programData as Program).id).eq('prefeitura_id', prefeituraId);
+      query = query.update(payload).eq('id', (programData as Program).id).eq('prefeitura_id', finalPrefeituraId);
     } else {
       query = query.insert([payload]);
     }
@@ -222,10 +243,10 @@ export function useContractManagement(refetchData: () => void): UseContractManag
     refetchData();
     toast({ title: "Sucesso", description: `Programa ${isEditing ? 'atualizado' : 'salvo'} com sucesso.`, variant: "success" });
     return toCamelCase(data) as Program;
-  }, [refetchData, toast, prefeituraId]);
+  }, [refetchData, toast, prefeituraId, isSuperAdmin]);
 
   const deleteProgram = useCallback(async (programId: string) => {
-    if (!prefeituraId) {
+    if (!prefeituraId && !isSuperAdmin) {
       toast({ title: "Erro de Autenticação", description: "ID da prefeitura não encontrado. Faça login novamente.", variant: "destructive" });
       return false;
     }
@@ -234,7 +255,7 @@ export function useContractManagement(refetchData: () => void): UseContractManag
       .from('programs')
       .delete()
       .eq('id', programId)
-      .eq('prefeitura_id', prefeituraId); // Filtrando por prefeitura_id
+      .eq('prefeitura_id', prefeituraId); 
 
     if (error) {
       toast({ title: "Erro ao excluir programa", description: error.message, variant: "destructive" });
@@ -244,22 +265,24 @@ export function useContractManagement(refetchData: () => void): UseContractManag
     refetchData();
     toast({ title: "Sucesso", description: "Programa excluído com sucesso.", variant: "success" });
     return true;
-  }, [refetchData, toast, prefeituraId]);
+  }, [refetchData, toast, prefeituraId, isSuperAdmin]);
 
   // --- Empresas (Companies) ---
 
   const saveCompany = useCallback(async (companyData: Omit<Company, 'id'>, isEditing: boolean) => {
-    if (!prefeituraId) {
+    const finalPrefeituraId = isSuperAdmin ? companyData.prefeituraId : prefeituraId;
+    
+    if (!finalPrefeituraId) {
       toast({ title: "Erro de Autenticação", description: "ID da prefeitura não encontrado. Faça login novamente.", variant: "destructive" });
       return null;
     }
     
-    const payload = toSnakeCase({ ...companyData, prefeituraId }); // Adicionando prefeitura_id
+    const payload = toSnakeCase({ ...companyData, prefeituraId: finalPrefeituraId }); 
     
     let query = supabase.from('companies');
     
     if (isEditing && (companyData as Company).id) {
-      query = query.update(payload).eq('id', (companyData as Company).id).eq('prefeitura_id', prefeituraId);
+      query = query.update(payload).eq('id', (companyData as Company).id).eq('prefeitura_id', finalPrefeituraId);
     } else {
       query = query.insert([payload]);
     }
@@ -272,13 +295,12 @@ export function useContractManagement(refetchData: () => void): UseContractManag
       return null;
     }
 
-    // REMOVIDO: refetchData();
     toast({ title: "Sucesso", description: `Empresa ${isEditing ? 'atualizada' : 'salva'} com sucesso.`, variant: "success" });
     return toCamelCase(data) as Company;
-  }, [toast, prefeituraId]);
+  }, [toast, prefeituraId, isSuperAdmin]);
 
   const deleteCompany = useCallback(async (companyId: string) => {
-    if (!prefeituraId) {
+    if (!prefeituraId && !isSuperAdmin) {
       toast({ title: "Erro de Autenticação", description: "ID da prefeitura não encontrado. Faça login novamente.", variant: "destructive" });
       return false;
     }
@@ -287,27 +309,28 @@ export function useContractManagement(refetchData: () => void): UseContractManag
       .from('companies')
       .delete()
       .eq('id', companyId)
-      .eq('prefeitura_id', prefeituraId); // Filtrando por prefeitura_id
+      .eq('prefeitura_id', prefeituraId); 
 
     if (error) {
       toast({ title: "Erro ao excluir empresa", description: error.message, variant: "destructive" });
       return false;
     }
-    // REMOVIDO: refetchData();
     return true;
-  }, [toast, prefeituraId]);
+  }, [toast, prefeituraId, isSuperAdmin]);
 
   // --- Aditivos e Notas Fiscais (Sub-tabelas) ---
   
   const saveAdditive = useCallback(async (additive: Omit<Additive, 'id'>, contractId: string, isEditing: boolean) => {
-    if (!prefeituraId) {
+    const finalPrefeituraId = isSuperAdmin ? additive.prefeituraId : prefeituraId;
+    
+    if (!finalPrefeituraId) {
       toast({ title: "Erro de Autenticação", description: "ID da prefeitura não encontrado. Faça login novamente.", variant: "destructive" });
       return null;
     }
     
     const payload = toSnakeCase({
       ...additive,
-      prefeituraId, // Adicionando prefeitura_id
+      prefeituraId: finalPrefeituraId, 
       contractId,
       date: additive.date.toISOString().split('T')[0],
     });
@@ -315,7 +338,7 @@ export function useContractManagement(refetchData: () => void): UseContractManag
     let query = supabase.from('additives');
     
     if (isEditing && (additive as Additive).id) {
-      query = query.update(payload).eq('id', (additive as Additive).id).eq('prefeitura_id', prefeituraId);
+      query = query.update(payload).eq('id', (additive as Additive).id).eq('prefeitura_id', finalPrefeituraId);
     } else {
       query = query.insert([payload]);
     }
@@ -327,13 +350,11 @@ export function useContractManagement(refetchData: () => void): UseContractManag
       return null;
     }
 
-    // Não chamamos refetchData aqui, pois a atualização do contrato pai (que contém o aditivo)
-    // deve ser feita separadamente no componente ContractDetails para recalcular os valores.
     return toCamelCase(data) as Additive;
-  }, [toast, prefeituraId]);
+  }, [toast, prefeituraId, isSuperAdmin]);
 
   const deleteAdditive = useCallback(async (additiveId: string) => {
-    if (!prefeituraId) {
+    if (!prefeituraId && !isSuperAdmin) {
       toast({ title: "Erro de Autenticação", description: "ID da prefeitura não encontrado. Faça login novamente.", variant: "destructive" });
       return false;
     }
@@ -342,24 +363,26 @@ export function useContractManagement(refetchData: () => void): UseContractManag
       .from('additives')
       .delete()
       .eq('id', additiveId)
-      .eq('prefeitura_id', prefeituraId); // Filtrando por prefeitura_id
+      .eq('prefeitura_id', prefeituraId); 
 
     if (error) {
       toast({ title: "Erro ao excluir aditivo", description: error.message, variant: "destructive" });
       return false;
     }
     return true;
-  }, [toast, prefeituraId]);
+  }, [toast, prefeituraId, isSuperAdmin]);
 
   const saveInvoice = useCallback(async (invoice: Omit<Invoice, 'id'>, contractId: string, isEditing: boolean) => {
-    if (!prefeituraId) {
+    const finalPrefeituraId = isSuperAdmin ? invoice.prefeituraId : prefeituraId;
+    
+    if (!finalPrefeituraId) {
       toast({ title: "Erro de Autenticação", description: "ID da prefeitura não encontrado. Faça login novamente.", variant: "destructive" });
       return null;
     }
     
     const payload = toSnakeCase({
       ...invoice,
-      prefeituraId, // Adicionando prefeitura_id
+      prefeituraId: finalPrefeituraId, 
       contractId,
       date: invoice.date.toISOString().split('T')[0],
     });
@@ -367,7 +390,7 @@ export function useContractManagement(refetchData: () => void): UseContractManag
     let query = supabase.from('invoices');
     
     if (isEditing && (invoice as Invoice).id) {
-      query = query.update(payload).eq('id', (invoice as Invoice).id).eq('prefeitura_id', prefeituraId);
+      query = query.update(payload).eq('id', (invoice as Invoice).id).eq('prefeitura_id', finalPrefeituraId);
     } else {
       query = query.insert([payload]);
     }
@@ -379,13 +402,11 @@ export function useContractManagement(refetchData: () => void): UseContractManag
       return null;
     }
 
-    // Não chamamos refetchData aqui, pois a atualização do contrato pai (que contém a nota)
-    // deve ser feita separadamente no componente ContractDetails para recalcular os valores.
     return toCamelCase(data) as Invoice;
-  }, [toast, prefeituraId]);
+  }, [toast, prefeituraId, isSuperAdmin]);
 
   const deleteInvoice = useCallback(async (invoiceId: string) => {
-    if (!prefeituraId) {
+    if (!prefeituraId && !isSuperAdmin) {
       toast({ title: "Erro de Autenticação", description: "ID da prefeitura não encontrado. Faça login novamente.", variant: "destructive" });
       return false;
     }
@@ -394,25 +415,27 @@ export function useContractManagement(refetchData: () => void): UseContractManag
       .from('invoices')
       .delete()
       .eq('id', invoiceId)
-      .eq('prefeitura_id', prefeituraId); // Filtrando por prefeitura_id
+      .eq('prefeitura_id', prefeituraId); 
 
     if (error) {
       toast({ title: "Erro ao excluir nota fiscal", description: error.message, variant: "destructive" });
       return false;
     }
     return true;
-  }, [toast, prefeituraId]);
+  }, [toast, prefeituraId, isSuperAdmin]);
 
   // --- Fiscais de Contratos ---
 
-  const saveFiscal = useCallback(async (fiscalData: { name: string; cpf: string; ordinance: string }) => {
-    if (!prefeituraId) {
+  const saveFiscal = useCallback(async (fiscalData: FiscalData) => {
+    const finalPrefeituraId = isSuperAdmin ? fiscalData.prefeituraId : prefeituraId;
+    
+    if (!finalPrefeituraId) {
       toast({ title: "Erro de Autenticação", description: "ID da prefeitura não encontrado. Faça login novamente.", variant: "destructive" });
       return null;
     }
     
     try {
-      const payload = toSnakeCase({ ...fiscalData, prefeituraId }); // Adicionando prefeitura_id
+      const payload = toSnakeCase({ ...fiscalData, prefeituraId: finalPrefeituraId }); 
       
       const { data, error } = await supabase
         .from('fiscals')
@@ -432,10 +455,12 @@ export function useContractManagement(refetchData: () => void): UseContractManag
       toast({ title: "Erro", description: "Falha ao salvar fiscal.", variant: "destructive" });
       return null;
     }
-  }, [toast, prefeituraId]);
+  }, [toast, prefeituraId, isSuperAdmin]);
 
-  const updateFiscal = useCallback(async (fiscalId: string, fiscalData: { name: string; cpf: string; ordinance: string }) => {
-    if (!prefeituraId) {
+  const updateFiscal = useCallback(async (fiscalId: string, fiscalData: FiscalData) => {
+    const finalPrefeituraId = isSuperAdmin ? fiscalData.prefeituraId : prefeituraId;
+    
+    if (!finalPrefeituraId) {
       toast({ title: "Erro de Autenticação", description: "ID da prefeitura não encontrado. Faça login novamente.", variant: "destructive" });
       return false;
     }
@@ -447,7 +472,7 @@ export function useContractManagement(refetchData: () => void): UseContractManag
         .from('fiscals')
         .update(payload)
         .eq('id', fiscalId)
-        .eq('prefeitura_id', prefeituraId); // Filtrando por prefeitura_id
+        .eq('prefeitura_id', finalPrefeituraId); 
 
       if (error) {
         toast({ title: "Erro ao atualizar fiscal", description: error.message, variant: "destructive" });
@@ -461,10 +486,10 @@ export function useContractManagement(refetchData: () => void): UseContractManag
       toast({ title: "Erro", description: "Falha ao atualizar fiscal.", variant: "destructive" });
       return false;
     }
-  }, [toast, prefeituraId]);
+  }, [toast, prefeituraId, isSuperAdmin]);
 
   const deleteFiscal = useCallback(async (fiscalId: string) => {
-    if (!prefeituraId) {
+    if (!prefeituraId && !isSuperAdmin) {
       toast({ title: "Erro de Autenticação", description: "ID da prefeitura não encontrado. Faça login novamente.", variant: "destructive" });
       return false;
     }
@@ -474,7 +499,7 @@ export function useContractManagement(refetchData: () => void): UseContractManag
         .from('fiscals')
         .delete()
         .eq('id', fiscalId)
-        .eq('prefeitura_id', prefeituraId); // Filtrando por prefeitura_id
+        .eq('prefeitura_id', prefeituraId); 
 
       if (error) {
         toast({ title: "Erro ao excluir fiscal", description: error.message, variant: "destructive" });
@@ -488,17 +513,24 @@ export function useContractManagement(refetchData: () => void): UseContractManag
       toast({ title: "Erro", description: "Falha ao excluir fiscal.", variant: "destructive" });
       return false;
     }
-  }, [toast, prefeituraId]);
+  }, [toast, prefeituraId, isSuperAdmin]);
 
   const getAllFiscals = useCallback(async () => {
-    if (!prefeituraId) return [];
+    if (!prefeituraId && !isSuperAdmin) return [];
     
     try {
-      const { data, error } = await supabase
+      // Se for Super Admin, buscamos todos os fiscais (RLS permite)
+      // Se não for, buscamos apenas os da prefeituraId (RLS permite)
+      let query = supabase
         .from('fiscals')
         .select('*')
-        .eq('prefeitura_id', prefeituraId) // Filtrando por prefeitura_id
         .order('name');
+        
+      if (!isSuperAdmin) {
+        query = query.eq('prefeitura_id', prefeituraId);
+      }
+
+      const { data, error } = await query;
 
       if (error) {
         toast({ title: "Erro ao buscar fiscais", description: error.message, variant: "destructive" });
@@ -511,7 +543,7 @@ export function useContractManagement(refetchData: () => void): UseContractManag
       toast({ title: "Erro", description: "Falha ao buscar fiscais.", variant: "destructive" });
       return [];
     }
-  }, [toast, prefeituraId]);
+  }, [toast, prefeituraId, isSuperAdmin]);
 
   return {
     saveContract,
