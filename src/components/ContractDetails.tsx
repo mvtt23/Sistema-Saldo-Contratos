@@ -44,6 +44,25 @@ const statusConfig = {
   completed: { label: 'Concluído', color: 'bg-blue-500', icon: Clock }
 };
 
+// Função auxiliar para garantir que a data seja um objeto Date e formatar para input[type=date]
+const safeDateToInputString = (date: Date | string | undefined): string => {
+  if (!date) return '';
+  
+  let dateObj: Date;
+  if (date instanceof Date) {
+    dateObj = date;
+  } else {
+    dateObj = new Date(date);
+  }
+  
+  if (isNaN(dateObj.getTime())) {
+    return '';
+  }
+  
+  return dateObj.toISOString().split('T')[0];
+};
+
+
 export function ContractDetails({ 
   contract, 
   onContractUpdate, 
@@ -64,27 +83,35 @@ export function ContractDetails({
   const canCreate = hasPermission('contracts', 'create');
   const canDelete = hasPermission('contracts', 'delete');
   
-  const [additiveForm, setAdditiveForm] = useState({
+  // Inicialização do estado do formulário de aditivo
+  const initialAdditiveForm = {
     type: 'value' as 'value' | 'term' | 'both',
     valueChange: 0,
     termChange: 0,
-    date: new Date().toISOString().split('T')[0],
+    date: safeDateToInputString(new Date()),
     description: '',
     justification: '',
-    // Campos auxiliares para edição de prazo
-    newStartDate: contract.startDate.toISOString().split('T')[0],
-    newEndDate: contract.endDate.toISOString().split('T')[0]
-  });
+    newStartDate: safeDateToInputString(contract.startDate),
+    newEndDate: safeDateToInputString(contract.endDate)
+  };
+
+  const [additiveForm, setAdditiveForm] = useState(initialAdditiveForm);
   
   const [invoiceForm, setInvoiceForm] = useState({
     number: '',
     value: 0,
-    date: new Date().toISOString().split('T')[0]
+    date: safeDateToInputString(new Date())
   });
 
-  // Atualizar o contrato local quando o prop contract mudar (após refetch)
+  // Atualizar o contrato local e redefinir o formulário de aditivo quando o prop contract mudar (após refetch)
   useEffect(() => {
     setCurrentContract(contract);
+    // Atualiza as datas de início/fim no formulário de aditivo se o contrato mudar
+    setAdditiveForm(prev => ({
+      ...prev,
+      newStartDate: safeDateToInputString(contract.startDate),
+      newEndDate: safeDateToInputString(contract.endDate)
+    }));
   }, [contract]);
 
   const status = statusConfig[currentContract.status];
@@ -104,11 +131,11 @@ export function ContractDetails({
       type: 'value',
       valueChange: 0,
       termChange: 0,
-      date: new Date().toISOString().split('T')[0],
+      date: safeDateToInputString(new Date()),
       description: '',
       justification: '',
-      newStartDate: currentContract.startDate.toISOString().split('T')[0],
-      newEndDate: currentContract.endDate.toISOString().split('T')[0]
+      newStartDate: safeDateToInputString(currentContract.startDate),
+      newEndDate: safeDateToInputString(currentContract.endDate)
     });
     setEditingAdditive(null);
     setIsAddingAdditive(false);
@@ -118,7 +145,7 @@ export function ContractDetails({
     setInvoiceForm({
       number: '',
       value: 0,
-      date: new Date().toISOString().split('T')[0]
+      date: safeDateToInputString(new Date())
     });
     setEditingInvoice(null);
     setIsAddingInvoice(false);
@@ -262,11 +289,11 @@ export function ContractDetails({
       type: additive.type,
       valueChange: additive.valueChange,
       termChange: additive.termChange,
-      date: additive.date.toISOString().split('T')[0],
+      date: safeDateToInputString(additive.date),
       description: additive.description || '',
       justification: additive.justification || '',
-      newStartDate: currentContract.startDate.toISOString().split('T')[0], // Mantém a data atual do contrato
-      newEndDate: currentContract.endDate.toISOString().split('T')[0] // Mantém a data atual do contrato
+      newStartDate: safeDateToInputString(currentContract.startDate), // Mantém a data atual do contrato
+      newEndDate: safeDateToInputString(currentContract.endDate) // Mantém a data atual do contrato
     });
     setIsAddingAdditive(true);
   };
@@ -276,7 +303,7 @@ export function ContractDetails({
     setInvoiceForm({
       number: invoice.number,
       value: invoice.value,
-      date: invoice.date.toISOString().split('T')[0]
+      date: safeDateToInputString(invoice.date)
     });
     setIsAddingInvoice(true);
   };
@@ -463,344 +490,343 @@ export function ContractDetails({
                 style={{ width: `${Math.min(usagePercentage, 100)}%` }}
               />
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
 
-      {/* Tabs com detalhes - Layout responsivo */}
-      <Tabs defaultValue="additives" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="additives">Aditivos ({currentContract.additives.length})</TabsTrigger>
-          <TabsTrigger value="invoices">Notas Fiscais ({currentContract.invoices.length})</TabsTrigger>
-        </TabsList>
+        {/* Tabs com detalhes - Layout responsivo */}
+        <Tabs defaultValue="additives" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="additives">Aditivos ({currentContract.additives.length})</TabsTrigger>
+            <TabsTrigger value="invoices">Notas Fiscais ({currentContract.invoices.length})</TabsTrigger>
+          </TabsList>
 
-        <TabsContent value="additives" className="space-y-4">
-          <div className="flex justify-between items-center">
-            <h3 className="text-lg font-semibold">Gestão de Aditivos</h3>
-            {currentContract.status === 'active' && canCreate && (
-              <Button
-                onClick={() => {
-                  resetAdditiveForm();
-                  setIsAddingAdditive(true);
-                }}
-                className="bg-blue-600 hover:bg-blue-700"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Novo Aditivo
-              </Button>
-            )}
-          </div>
+          <TabsContent value="additives" className="space-y-4">
+            <div className="flex justify-between items-center">
+              <h3 className="text-lg font-semibold">Gestão de Aditivos</h3>
+              {currentContract.status === 'active' && canCreate && (
+                <Button
+                  onClick={() => {
+                    resetAdditiveForm();
+                    setIsAddingAdditive(true);
+                  }}
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Novo Aditivo
+                </Button>
+              )}
+            </div>
 
-          {/* Formulário de Novo Aditivo - Layout responsivo */}
-          {isAddingAdditive && (
-            <Card className="border-blue-200 bg-blue-50">
-              <CardHeader>
-                <CardTitle className="text-lg">
-                  {editingAdditive ? 'Editar Aditivo' : 'Novo Aditivo'}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 gap-4">
-                  <div>
-                    <Label>Tipo de Aditivo</Label>
-                    <div className="space-y-2 mt-2">
-                      <label className="flex items-center">
-                        <input
-                          type="radio"
-                          name="additiveType"
-                          value="value"
-                          checked={additiveForm.type === 'value'}
-                          onChange={(e) => handleAdditiveInputChange('type', e.target.value)}
-                          className="mr-2"
-                        />
-                        Aditivo de Valor
-                      </label>
-                      <label className="flex items-center">
-                        <input
-                          type="radio"
-                          name="additiveType"
-                          value="term"
-                          checked={additiveForm.type === 'term'}
-                          onChange={(e) => handleAdditiveInputChange('type', e.target.value)}
-                          className="mr-2"
-                        />
-                        Aditivo de Prazo
-                      </label>
-                      <label className="flex items-center">
-                        <input
-                          type="radio"
-                          name="additiveType"
-                          value="both"
-                          checked={additiveForm.type === 'both'}
-                          onChange={(e) => handleAdditiveInputChange('type', e.target.value)}
-                          className="mr-2"
-                        />
-                        Valor e Prazo
-                      </label>
-                    </div>
-                  </div>
-
-                  <div>
-                    {(additiveForm.type === 'value' || additiveForm.type === 'both') && (
-                      <div>
-                        <Label htmlFor="valueChange">Acréscimo de Valor (R$)</Label>
-                        <Input
-                          id="valueChange"
-                          type="number"
-                          step="0.01"
-                          value={additiveForm.valueChange}
-                          onChange={(e) => handleAdditiveInputChange('valueChange', parseFloat(e.target.value) || 0)}
-                          placeholder="0,00"
-                        />
-                      </div>
-                    )}
-                  </div>
-                  <div>
-                    <Label htmlFor="date">Data do Aditivo</Label>
-                    <Input
-                      id="date"
-                      type="date"
-                      value={additiveForm.date}
-                      onChange={(e) => handleAdditiveInputChange('date', e.target.value)}
-                      required
-                    />
-                  </div>
-                </div>
-                
-                <div>
-                  <Label htmlFor="description">Descrição</Label>
-                  <Textarea
-                    id="description"
-                    value={additiveForm.description}
-                    onChange={(e) => handleAdditiveInputChange('description', e.target.value)}
-                    placeholder="Breve descrição do aditivo"
-                  />
-                </div>
-
-                {(additiveForm.type === 'term' || additiveForm.type === 'both') && (
+            {/* Formulário de Novo Aditivo - Layout responsivo */}
+            {isAddingAdditive && (
+              <Card className="border-blue-200 bg-blue-50">
+                <CardHeader>
+                  <CardTitle className="text-lg">
+                    {editingAdditive ? 'Editar Aditivo' : 'Novo Aditivo'}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
                   <div className="grid grid-cols-1 gap-4">
                     <div>
-                      <Label htmlFor="newStartDate">Nova Data de Início da Vigência</Label>
-                      <Input
-                        id="newStartDate"
-                        type="date"
-                        value={additiveForm.newStartDate}
-                        onChange={(e) => handleAdditiveInputChange('newStartDate', e.target.value)}
-                        min={currentContract.startDate.toISOString().split('T')[0]}
-                      />
+                      <Label>Tipo de Aditivo</Label>
+                      <div className="space-y-2 mt-2">
+                        <label className="flex items-center">
+                          <input
+                            type="radio"
+                            name="additiveType"
+                            value="value"
+                            checked={additiveForm.type === 'value'}
+                            onChange={(e) => handleAdditiveInputChange('type', e.target.value)}
+                            className="mr-2"
+                          />
+                          Aditivo de Valor
+                        </label>
+                        <label className="flex items-center">
+                          <input
+                            type="radio"
+                            name="additiveType"
+                            value="term"
+                            checked={additiveForm.type === 'term'}
+                            onChange={(e) => handleAdditiveInputChange('type', e.target.value)}
+                            className="mr-2"
+                          />
+                          Aditivo de Prazo
+                        </label>
+                        <label className="flex items-center">
+                          <input
+                            type="radio"
+                            name="additiveType"
+                            value="both"
+                            checked={additiveForm.type === 'both'}
+                            onChange={(e) => handleAdditiveInputChange('type', e.target.value)}
+                            className="mr-2"
+                          />
+                          Valor e Prazo
+                        </label>
+                      </div>
                     </div>
-                    <div>
-                      <Label htmlFor="newEndDate">Nova Data de Fim da Vigência</Label>
-                      <Input
-                        id="newEndDate"
-                        type="date"
-                        value={additiveForm.newEndDate}
-                        onChange={(e) => handleAdditiveInputChange('newEndDate', e.target.value)}
-                        min={additiveForm.newStartDate || currentContract.startDate.toISOString().split('T')[0]}
-                      />
-                    </div>
-                  </div>
-                )}
 
-                <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-2">
-                  <Button variant="outline" onClick={resetAdditiveForm}>
-                    Cancelar
-                  </Button>
-                  <Button onClick={handleSaveAdditive} className="bg-blue-600 hover:bg-blue-700">
-                    <Save className="w-4 h-4 mr-2" />
-                    {editingAdditive ? 'Atualizar Aditivo' : 'Salvar Aditivo'}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Lista de Aditivos - Layout responsivo */}
-          {currentContract.additives.length === 0 ? (
-            <Card>
-              <CardContent className="p-6 text-center text-gray-500">
-                Nenhum aditivo registrado para este contrato.
-              </CardContent>
-            </Card>
-          ) : (
-            currentContract.additives.map((additive) => (
-              <Card key={additive.id}>
-                <CardContent className="p-4">
-                  <div className="flex justify-between items-start mb-4">
                     <div>
-                      <h4 className="font-semibold text-gray-900 mb-2">
-                        Aditivo {additive.type === 'value' ? 'de Valor' : additive.type === 'term' ? 'de Prazo' : 'de Valor e Prazo'}
-                      </h4>
-                      <p className="text-sm text-gray-500">Data: {formatDate(additive.date)}</p>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Badge variant="outline" className="capitalize">
-                        {additive.type === 'value' ? 'Valor' : additive.type === 'term' ? 'Prazo' : 'Valor e Prazo'}
-                      </Badge>
-                      {currentContract.status === 'active' && canEdit && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleEditAdditive(additive)}
-                        >
-                          <Edit className="w-4 h-4" />
-                        </Button>
+                      {(additiveForm.type === 'value' || additiveForm.type === 'both') && (
+                        <div>
+                          <Label htmlFor="valueChange">Acréscimo de Valor (R$)</Label>
+                          <Input
+                            id="valueChange"
+                            type="number"
+                            step="0.01"
+                            value={additiveForm.valueChange}
+                            onChange={(e) => handleAdditiveInputChange('valueChange', parseFloat(e.target.value) || 0)}
+                            placeholder="0,00"
+                          />
+                        </div>
                       )}
+                    </div>
+                    <div>
+                      <Label htmlFor="date">Data do Aditivo</Label>
+                      <Input
+                        id="date"
+                        type="date"
+                        value={additiveForm.date}
+                        onChange={(e) => handleAdditiveInputChange('date', e.target.value)}
+                        required
+                      />
                     </div>
                   </div>
                   
-                  <div className="grid grid-cols-1 gap-2">
-                    {additive.valueChange !== 0 && (
-                      <div className="flex items-center">
-                        <TrendingUp className="w-4 h-4 text-green-500 mr-2" />
-                        <span className="text-sm">
-                          Alteração de valor: <strong>{formatCurrency(additive.valueChange)}</strong>
-                        </span>
+                  <div>
+                    <Label htmlFor="description">Descrição</Label>
+                    <Textarea
+                      id="description"
+                      value={additiveForm.description}
+                      onChange={(e) => handleAdditiveInputChange('description', e.target.value)}
+                      placeholder="Breve descrição do aditivo"
+                    />
+                  </div>
+
+                  {(additiveForm.type === 'term' || additiveForm.type === 'both') && (
+                    <div className="grid grid-cols-1 gap-4">
+                      <div>
+                        <Label htmlFor="newStartDate">Nova Data de Início da Vigência</Label>
+                        <Input
+                          id="newStartDate"
+                          type="date"
+                          value={additiveForm.newStartDate}
+                          onChange={(e) => handleAdditiveInputChange('newStartDate', e.target.value)}
+                          min={safeDateToInputString(currentContract.startDate)}
+                        />
                       </div>
-                    )}
-                    {additive.termChange !== 0 && (
-                      <div className="flex items-center">
-                        <Calendar className="w-4 h-4 text-blue-500 mr-2" />
-                        <span className="text-sm">
-                          Alteração de prazo: <strong>{additive.termChange} dias</strong>
-                        </span>
+                      <div>
+                        <Label htmlFor="newEndDate">Nova Data de Fim da Vigência</Label>
+                        <Input
+                          id="newEndDate"
+                          type="date"
+                          value={additiveForm.newEndDate}
+                          onChange={(e) => handleAdditiveInputChange('newEndDate', e.target.value)}
+                          min={additiveForm.newStartDate || safeDateToInputString(currentContract.startDate)}
+                        />
                       </div>
-                    )}
+                    </div>
+                  )}
+
+                  <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-2">
+                    <Button variant="outline" onClick={resetAdditiveForm}>
+                      Cancelar
+                    </Button>
+                    <Button onClick={handleSaveAdditive} className="bg-blue-600 hover:bg-blue-700">
+                      <Save className="w-4 h-4 mr-2" />
+                      {editingAdditive ? 'Atualizar Aditivo' : 'Salvar Aditivo'}
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
-            ))
-          )}
-        </TabsContent>
-
-        <TabsContent value="invoices" className="space-y-4">
-          <div className="flex justify-between items-center">
-            <h3 className="text-lg font-semibold">Gestão de Notas Fiscais</h3>
-            {currentContract.status === 'active' && canCreate && (
-              <Button
-                onClick={() => {
-                  resetInvoiceForm();
-                  setIsAddingInvoice(true);
-                }}
-                className="bg-blue-600 hover:bg-blue-700"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Nova Nota Fiscal
-              </Button>
             )}
-          </div>
 
-          {/* Formulário de Nova Nota Fiscal - Layout responsivo */}
-          {isAddingInvoice && (
-            <Card className="border-blue-200 bg-blue-50">
-              <CardHeader>
-                <CardTitle className="text-lg">
-                  {editingInvoice ? 'Editar Nota Fiscal' : 'Nova Nota Fiscal'}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 gap-4">
-                  <div>
-                    <Label htmlFor="invoiceNumber">Número da Nota Fiscal</Label>
-                    <Input
-                      id="invoiceNumber"
-                      value={invoiceForm.number}
-                      onChange={(e) => handleInvoiceInputChange('number', e.target.value)}
-                      placeholder="Ex: NF-001"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="invoiceValue">Valor da Nota</Label>
-                    <Input
-                      id="invoiceValue"
-                      type="number"
-                      step="0.01"
-                      value={invoiceForm.value}
-                      onChange={(e) => handleInvoiceInputChange('value', parseFloat(e.target.value) || 0)}
-                      placeholder="0,00"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="invoiceDate">Data da Nota</Label>
-                    <Input
-                      id="invoiceDate"
-                      type="date"
-                      value={invoiceForm.date}
-                      onChange={(e) => handleInvoiceInputChange('date', e.target.value)}
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-2">
-                  <Button variant="outline" onClick={resetInvoiceForm}>
-                    Cancelar
-                  </Button>
-                  <Button onClick={handleSaveInvoice} className="bg-blue-600 hover:bg-blue-700">
-                    <Save className="w-4 h-4 mr-2" />
-                    {editingInvoice ? 'Atualizar' : 'Salvar'}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {currentContract.invoices.length === 0 ? (
-            <Card>
-              <CardContent className="p-6 text-center text-gray-500">
-                Nenhuma nota fiscal registrada para este contrato.
-              </CardContent>
-            </Card>
-          ) : (
-            currentContract.invoices.map((invoice) => (
-              <Card key={invoice.id}>
-                <CardContent className="p-4">
-                  <div className="flex justify-between items-start mb-4">
-                    <div className="flex-1">
-                      <h4 className="font-semibold text-gray-900 mb-2">Nota Fiscal {invoice.number}</h4>
-                      <div className="grid grid-cols-1 gap-2 text-sm text-gray-600">
-                        <div>
-                          <span className="text-gray-500">Valor:</span>
-                          <span className="font-medium ml-2">{formatCurrency(invoice.value)}</span>
-                        </div>
-                        <div>
-                          <span className="text-gray-500">Data:</span>
-                          <span className="font-medium ml-2">{formatDate(invoice.date)}</span>
-                        </div>
+            {/* Lista de Aditivos - Layout responsivo */}
+            {currentContract.additives.length === 0 ? (
+              <Card>
+                <CardContent className="p-6 text-center text-gray-500">
+                  Nenhum aditivo registrado para este contrato.
+                </CardContent>
+              </Card>
+            ) : (
+              currentContract.additives.map((additive) => (
+                <Card key={additive.id}>
+                  <CardContent className="p-4">
+                    <div className="flex justify-between items-start mb-4">
+                      <div>
+                        <h4 className="font-semibold text-gray-900 mb-2">
+                          Aditivo {additive.type === 'value' ? 'de Valor' : additive.type === 'term' ? 'de Prazo' : 'de Valor e Prazo'}
+                        </h4>
+                        <p className="text-sm text-gray-500">Data: {formatDate(additive.date)}</p>
                       </div>
-                    </div>
-                    {currentContract.status === 'active' && (canEdit || canDelete) && (
-                      <div className="flex space-x-2 ml-4">
-                        {canEdit && (
+                      <div className="flex items-center space-x-2">
+                        <Badge variant="outline" className="capitalize">
+                          {additive.type === 'value' ? 'Valor' : additive.type === 'term' ? 'Prazo' : 'Valor e Prazo'}
+                        </Badge>
+                        {currentContract.status === 'active' && canEdit && (
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => handleEditInvoice(invoice)}
+                            onClick={() => handleEditAdditive(additive)}
                           >
                             <Edit className="w-4 h-4" />
                           </Button>
                         )}
-                        {canDelete && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleDeleteInvoice(invoice.id)}
-                            className="text-red-600 hover:text-red-700"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        )}
                       </div>
-                    )}
+                    </div>
+                    
+                    <div className="grid grid-cols-1 gap-2">
+                      {additive.valueChange !== 0 && (
+                        <div className="flex items-center">
+                          <TrendingUp className="w-4 h-4 text-green-500 mr-2" />
+                          <span className="text-sm">
+                            Alteração de valor: <strong>{formatCurrency(additive.valueChange)}</strong>
+                          </span>
+                        </div>
+                      )}
+                      {additive.termChange !== 0 && (
+                        <div className="flex items-center">
+                          <Calendar className="w-4 h-4 text-blue-500 mr-2" />
+                          <span className="text-sm">
+                            Alteração de prazo: <strong>{additive.termChange} dias</strong>
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            )}
+          </TabsContent>
+
+          <TabsContent value="invoices" className="space-y-4">
+            <div className="flex justify-between items-center">
+              <h3 className="text-lg font-semibold">Gestão de Notas Fiscais</h3>
+              {currentContract.status === 'active' && canCreate && (
+                <Button
+                  onClick={() => {
+                    resetInvoiceForm();
+                    setIsAddingInvoice(true);
+                  }}
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Nova Nota Fiscal
+                </Button>
+              )}
+            </div>
+
+            {/* Formulário de Nova Nota Fiscal - Layout responsivo */}
+            {isAddingInvoice && (
+              <Card className="border-blue-200 bg-blue-50">
+                <CardHeader>
+                  <CardTitle className="text-lg">
+                    {editingInvoice ? 'Editar Nota Fiscal' : 'Nova Nota Fiscal'}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 gap-4">
+                    <div>
+                      <Label htmlFor="invoiceNumber">Número da Nota Fiscal</Label>
+                      <Input
+                        id="invoiceNumber"
+                        value={invoiceForm.number}
+                        onChange={(e) => handleInvoiceInputChange('number', e.target.value)}
+                        placeholder="Ex: NF-001"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="invoiceValue">Valor da Nota</Label>
+                      <Input
+                        id="invoiceValue"
+                        type="number"
+                        step="0.01"
+                        value={invoiceForm.value}
+                        onChange={(e) => handleInvoiceInputChange('value', parseFloat(e.target.value) || 0)}
+                        placeholder="0,00"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="invoiceDate">Data da Nota</Label>
+                      <Input
+                        id="invoiceDate"
+                        type="date"
+                        value={invoiceForm.date}
+                        onChange={(e) => handleInvoiceInputChange('date', e.target.value)}
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-2">
+                    <Button variant="outline" onClick={resetInvoiceForm}>
+                      Cancelar
+                    </Button>
+                    <Button onClick={handleSaveInvoice} className="bg-blue-600 hover:bg-blue-700">
+                      <Save className="w-4 h-4 mr-2" />
+                      {editingInvoice ? 'Atualizar' : 'Salvar'}
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
-            ))
-          )}
-        </TabsContent>
-      </Tabs>
-    </div>
-  );
+            )}
+
+            {currentContract.invoices.length === 0 ? (
+              <Card>
+                <CardContent className="p-6 text-center text-gray-500">
+                  Nenhuma nota fiscal registrada para este contrato.
+                </CardContent>
+              </Card>
+            ) : (
+              currentContract.invoices.map((invoice) => (
+                <Card key={invoice.id}>
+                  <CardContent className="p-4">
+                    <div className="flex justify-between items-start mb-4">
+                      <div className="flex-1">
+                        <h4 className="font-semibold text-gray-900 mb-2">Nota Fiscal {invoice.number}</h4>
+                        <div className="grid grid-cols-1 gap-2 text-sm text-gray-600">
+                          <div>
+                            <span className="text-gray-500">Valor:</span>
+                            <span className="font-medium ml-2">{formatCurrency(invoice.value)}</span>
+                          </div>
+                          <div>
+                            <span className="text-gray-500">Data:</span>
+                            <span className="font-medium ml-2">{formatDate(invoice.date)}</span>
+                          </div>
+                        </div>
+                      </div>
+                      {currentContract.status === 'active' && (canEdit || canDelete) && (
+                        <div className="flex space-x-2 ml-4">
+                          {canEdit && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleEditInvoice(invoice)}
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                          )}
+                          {canDelete && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleDeleteInvoice(invoice.id)}
+                              className="text-red-600 hover:text-red-700"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            )}
+          </TabsContent>
+        </Tabs>
+      </div>
+    );
 }
