@@ -15,6 +15,7 @@ interface User {
   role: string;
   is_active: boolean;
   permissions: Permission[];
+  prefeitura_id: string; // Adicionado
 }
 
 interface AuthContextType {
@@ -58,7 +59,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Buscar o usuário pelo username
       const { data: userData, error: userError } = await supabase
         .from('users')
-        .select('id, username, role, is_active, password')
+        .select('id, username, role, is_active, password, prefeitura_id') // Buscando prefeitura_id
         .eq('username', username)
         .maybeSingle();
 
@@ -101,6 +102,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         role: userData.role,
         is_active: userData.is_active,
         permissions: permissionsData || [],
+        prefeitura_id: userData.prefeitura_id, // Adicionando prefeitura_id
       };
 
       console.log('Login successful for user:', username);

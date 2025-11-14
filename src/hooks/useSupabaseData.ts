@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Contract, ManagingUnit, Company, Additive, Invoice } from '@/types/contract';
+import { Contract, ManagingUnit, Company, Additive, Invoice, Program } from '@/types/contract';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext'; // Importando useAuth
 
 interface SupabaseData {
   contracts: Contract[];
@@ -64,6 +65,7 @@ const parseDates = (data: any[]): any[] => {
 };
 
 export function useSupabaseData(): SupabaseData {
+  const { user } = useAuth(); // Obter usuário logado
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [managingUnits, setManagingUnits] = useState<ManagingUnit[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
@@ -72,6 +74,14 @@ export function useSupabaseData(): SupabaseData {
   const { toast } = useToast();
 
   const fetchData = useCallback(async () => {
+    if (!user?.prefeitura_id) {
+      setError("ID da prefeitura não encontrado. Faça login novamente.");
+      setLoading(false);
+      return;
+    }
+    
+    const prefeituraId = user.prefeitura_id;
+
     setLoading(true);
     setError(null);
 
@@ -83,7 +93,8 @@ export function useSupabaseData(): SupabaseData {
           *,
           additives (*),
           invoices (*)
-        `);
+        `)
+        .eq('prefeitura_id', prefeituraId); // FILTRO
 
       if (contractsError) throw contractsError;
       
@@ -93,14 +104,16 @@ export function useSupabaseData(): SupabaseData {
         .select(`
           *,
           programs (*)
-        `);
+        `)
+        .eq('prefeitura_id', prefeituraId); // FILTRO
 
       if (unitsError) throw unitsError;
 
       // 3. Fetch Companies
       const { data: companiesData, error: companiesError } = await supabase
         .from('companies')
-        .select('*');
+        .select('*')
+        .eq('prefeitura_id', prefeituraId); // FILTRO
 
       if (companiesError) throw companiesError;
 
@@ -124,11 +137,13 @@ export function useSupabaseData(): SupabaseData {
     } finally {
       setLoading(false);
     }
-  }, [toast]);
+  }, [toast, user?.prefeitura_id]);
 
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    if (user?.prefeitura_id) {
+      fetchData();
+    }
+  }, [fetchData, user?.prefeitura_id]);
 
   return { contracts, managingUnits, companies, loading, error, refetch: fetchData };
 }

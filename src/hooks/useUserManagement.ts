@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext'; // Importando useAuth
 
 interface User {
   id: string;
@@ -8,6 +9,7 @@ interface User {
   role: string;
   is_active: boolean;
   created_at: string;
+  prefeitura_id: string; // Adicionado
 }
 
 interface Permission {
@@ -29,10 +31,13 @@ interface ModulePermission {
 }
 
 export function useUserManagement() {
+  const { user: currentUser } = useAuth(); // Obter usuário logado para o prefeitura_id
   const [users, setUsers] = useState<User[]>([]);
   const [permissions, setPermissions] = useState<Record<string, ModulePermission[]>>({});
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  
+  const prefeituraId = currentUser?.prefeitura_id || 'default_municipality';
 
   // Módulos disponíveis no sistema
   const modules: ModulePermission[] = [
@@ -84,11 +89,14 @@ export function useUserManagement() {
 
   // Buscar todos os usuários
   const fetchUsers = useCallback(async () => {
+    if (!prefeituraId) return;
+
     setLoading(true);
     try {
       const { data, error } = await supabase
         .from('users')
         .select('*')
+        .eq('prefeitura_id', prefeituraId) // FILTRO
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -102,7 +110,8 @@ export function useUserManagement() {
         const { data: userPerms } = await supabase
           .from('user_permissions')
           .select('*')
-          .eq('user_id', user.id);
+          .eq('user_id', user.id)
+          .eq('prefeitura_id', prefeituraId); // FILTRO
 
         // Mapear permissões para o formato correto
         const userModulePerms = modules.map(module => {
@@ -133,7 +142,7 @@ export function useUserManagement() {
     } finally {
       setLoading(false);
     }
-  }, [toast]);
+  }, [toast, prefeituraId]);
 
   // Criar novo usuário
   const createUser = useCallback(async (userData: { username: string; password: string; role: string }) => {
@@ -145,6 +154,7 @@ export function useUserManagement() {
           password: userData.password,
           role: userData.role,
           is_active: true,
+          prefeitura_id: prefeituraId, // INSERINDO prefeitura_id
         }])
         .select()
         .single();
@@ -161,6 +171,7 @@ export function useUserManagement() {
         can_edit: perm.can_edit,
         can_create: perm.can_create,
         can_delete: perm.can_delete,
+        prefeitura_id: prefeituraId, // INSERINDO prefeitura_id
       }));
 
       await supabase
@@ -175,7 +186,7 @@ export function useUserManagement() {
       toast({ title: "Erro", description: "Falha ao criar usuário", variant: "destructive" });
       return false;
     }
-  }, [fetchUsers, toast]);
+  }, [fetchUsers, toast, prefeituraId]);
 
   // Atualizar usuário
   const updateUser = useCallback(async (userId: string, userData: { username?: string; password?: string; role?: string; is_active?: boolean }) => {
@@ -183,7 +194,8 @@ export function useUserManagement() {
       const { error } = await supabase
         .from('users')
         .update(userData)
-        .eq('id', userId);
+        .eq('id', userId)
+        .eq('prefeitura_id', prefeituraId); // Filtrando por prefeitura_id
 
       if (error) throw error;
 
@@ -193,7 +205,8 @@ export function useUserManagement() {
         await supabase
           .from('user_permissions')
           .delete()
-          .eq('user_id', userId);
+          .eq('user_id', userId)
+          .eq('prefeitura_id', prefeituraId); // Filtrando por prefeitura_id
 
         // Adicionar novas permissões
         const defaultPermissions = getDefaultPermissions(userData.role);
@@ -205,6 +218,7 @@ export function useUserManagement() {
           can_edit: perm.can_edit,
           can_create: perm.can_create,
           can_delete: perm.can_delete,
+          prefeitura_id: prefeituraId, // INSERINDO prefeitura_id
         }));
 
         await supabase
@@ -220,7 +234,7 @@ export function useUserManagement() {
       toast({ title: "Erro", description: "Falha ao atualizar usuário", variant: "destructive" });
       return false;
     }
-  }, [fetchUsers, toast]);
+  }, [fetchUsers, toast, prefeituraId]);
 
   // Excluir usuário
   const deleteUser = useCallback(async (userId: string) => {
@@ -229,13 +243,15 @@ export function useUserManagement() {
       await supabase
         .from('user_permissions')
         .delete()
-        .eq('user_id', userId);
+        .eq('user_id', userId)
+        .eq('prefeitura_id', prefeituraId); // Filtrando por prefeitura_id
 
       // Excluir usuário
       const { error } = await supabase
         .from('users')
         .delete()
-        .eq('id', userId);
+        .eq('id', userId)
+        .eq('prefeitura_id', prefeituraId); // Filtrando por prefeitura_id
 
       if (error) throw error;
 
@@ -247,7 +263,7 @@ export function useUserManagement() {
       toast({ title: "Erro", description: "Falha ao excluir usuário", variant: "destructive" });
       return false;
     }
-  }, [fetchUsers, toast]);
+  }, [fetchUsers, toast, prefeituraId]);
 
   // Atualizar permissões específicas de um usuário
   const updateUserPermissions = useCallback(async (userId: string, userPermissions: ModulePermission[]) => {
@@ -256,7 +272,8 @@ export function useUserManagement() {
       await supabase
         .from('user_permissions')
         .delete()
-        .eq('user_id', userId);
+        .eq('user_id', userId)
+        .eq('prefeitura_id', prefeituraId); // Filtrando por prefeitura_id
 
       // Adicionar novas permissões
       const permissionsToInsert = userPermissions.map(perm => ({
@@ -266,6 +283,7 @@ export function useUserManagement() {
         can_edit: perm.can_edit,
         can_create: perm.can_create,
         can_delete: perm.can_delete,
+        prefeitura_id: prefeituraId, // INSERINDO prefeitura_id
       }));
 
       await supabase
@@ -280,12 +298,14 @@ export function useUserManagement() {
       toast({ title: "Erro", description: "Falha ao atualizar permissões", variant: "destructive" });
       return false;
     }
-  }, [fetchUsers, toast]);
+  }, [fetchUsers, toast, prefeituraId]);
 
   // Carregar dados iniciais
   useEffect(() => {
-    fetchUsers();
-  }, [fetchUsers]);
+    if (currentUser?.prefeitura_id) {
+      fetchUsers();
+    }
+  }, [fetchUsers, currentUser?.prefeitura_id]);
 
   return {
     users,

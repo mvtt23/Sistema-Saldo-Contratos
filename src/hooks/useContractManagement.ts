@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext'; // Importando useAuth
 import { Contract, ManagingUnit, Company, Program, Additive, Invoice } from '@/types/contract';
 
 interface UseContractManagement {
@@ -52,12 +53,15 @@ const toCamelCase = (obj: any) => {
 
 export function useContractManagement(refetchData: () => void): UseContractManagement {
   const { toast } = useToast();
+  const { user } = useAuth();
+  const prefeituraId = user?.prefeitura_id || 'default_municipality';
 
   // --- Contratos ---
 
   const saveContract = useCallback(async (contractData: Omit<Contract, 'id' | 'additives' | 'invoices'>) => {
     const payload = toSnakeCase({
       ...contractData,
+      prefeituraId, // Adicionando prefeitura_id
       originalValue: contractData.originalValue,
       currentValue: contractData.currentValue,
       usedValue: contractData.usedValue,
@@ -79,11 +83,12 @@ export function useContractManagement(refetchData: () => void): UseContractManag
 
     refetchData();
     return toCamelCase(data) as Contract;
-  }, [refetchData, toast]);
+  }, [refetchData, toast, prefeituraId]);
 
   const updateContract = useCallback(async (contract: Contract) => {
     const payload = toSnakeCase({
       ...contract,
+      prefeituraId, // Garantindo que o ID da prefeitura seja mantido
       startDate: contract.startDate.toISOString().split('T')[0],
       endDate: contract.endDate.toISOString().split('T')[0],
     });
@@ -102,13 +107,14 @@ export function useContractManagement(refetchData: () => void): UseContractManag
 
     refetchData();
     return toCamelCase(data) as Contract;
-  }, [refetchData, toast]);
+  }, [refetchData, toast, prefeituraId]);
 
   const deleteContract = useCallback(async (contractId: string) => {
     const { error } = await supabase
       .from('contracts')
       .delete()
-      .eq('id', contractId);
+      .eq('id', contractId)
+      .eq('prefeitura_id', prefeituraId); // Filtrando por prefeitura_id
 
     if (error) {
       toast({ title: "Erro ao excluir contrato", description: error.message, variant: "destructive" });
@@ -118,12 +124,12 @@ export function useContractManagement(refetchData: () => void): UseContractManag
     refetchData();
     toast({ title: "Sucesso", description: "Contrato excluído com sucesso.", variant: "success" });
     return true;
-  }, [refetchData, toast]);
+  }, [refetchData, toast, prefeituraId]);
 
   // --- Unidades Gestoras ---
 
   const saveUnit = useCallback(async (unitData: Omit<ManagingUnit, 'programs'>, isEditing: boolean) => {
-    const payload = toSnakeCase(unitData);
+    const payload = toSnakeCase({ ...unitData, prefeituraId }); // Adicionando prefeitura_id
     
     let query = supabase.from('managing_units');
     
@@ -143,13 +149,14 @@ export function useContractManagement(refetchData: () => void): UseContractManag
     refetchData();
     toast({ title: "Sucesso", description: `Unidade ${isEditing ? 'atualizada' : 'salva'} com sucesso.`, variant: "success" });
     return toCamelCase(data) as ManagingUnit;
-  }, [refetchData, toast]);
+  }, [refetchData, toast, prefeituraId]);
 
   const deleteUnit = useCallback(async (unitId: string) => {
     const { error } = await supabase
       .from('managing_units')
       .delete()
-      .eq('id', unitId);
+      .eq('id', unitId)
+      .eq('prefeitura_id', prefeituraId); // Filtrando por prefeitura_id
 
     if (error) {
       toast({ title: "Erro ao excluir unidade", description: error.message, variant: "destructive" });
@@ -159,12 +166,12 @@ export function useContractManagement(refetchData: () => void): UseContractManag
     refetchData();
     toast({ title: "Sucesso", description: "Unidade gestora excluída com sucesso.", variant: "success" });
     return true;
-  }, [refetchData, toast]);
+  }, [refetchData, toast, prefeituraId]);
 
   // --- Programas ---
 
   const saveProgram = useCallback(async (programData: Omit<Program, 'id'>, isEditing: boolean) => {
-    const payload = toSnakeCase(programData);
+    const payload = toSnakeCase({ ...programData, prefeituraId }); // Adicionando prefeitura_id
     
     let query = supabase.from('programs');
     
@@ -184,13 +191,14 @@ export function useContractManagement(refetchData: () => void): UseContractManag
     refetchData();
     toast({ title: "Sucesso", description: `Programa ${isEditing ? 'atualizado' : 'salvo'} com sucesso.`, variant: "success" });
     return toCamelCase(data) as Program;
-  }, [refetchData, toast]);
+  }, [refetchData, toast, prefeituraId]);
 
   const deleteProgram = useCallback(async (programId: string) => {
     const { error } = await supabase
       .from('programs')
       .delete()
-      .eq('id', programId);
+      .eq('id', programId)
+      .eq('prefeitura_id', prefeituraId); // Filtrando por prefeitura_id
 
     if (error) {
       toast({ title: "Erro ao excluir programa", description: error.message, variant: "destructive" });
@@ -200,12 +208,12 @@ export function useContractManagement(refetchData: () => void): UseContractManag
     refetchData();
     toast({ title: "Sucesso", description: "Programa excluído com sucesso.", variant: "success" });
     return true;
-  }, [refetchData, toast]);
+  }, [refetchData, toast, prefeituraId]);
 
   // --- Empresas (Companies) ---
 
   const saveCompany = useCallback(async (companyData: Omit<Company, 'id'>, isEditing: boolean) => {
-    const payload = toSnakeCase(companyData);
+    const payload = toSnakeCase({ ...companyData, prefeituraId }); // Adicionando prefeitura_id
     
     let query = supabase.from('companies');
     
@@ -226,13 +234,14 @@ export function useContractManagement(refetchData: () => void): UseContractManag
     // REMOVIDO: refetchData();
     toast({ title: "Sucesso", description: `Empresa ${isEditing ? 'atualizada' : 'salva'} com sucesso.`, variant: "success" });
     return toCamelCase(data) as Company;
-  }, [toast]);
+  }, [toast, prefeituraId]);
 
   const deleteCompany = useCallback(async (companyId: string) => {
     const { error } = await supabase
       .from('companies')
       .delete()
-      .eq('id', companyId);
+      .eq('id', companyId)
+      .eq('prefeitura_id', prefeituraId); // Filtrando por prefeitura_id
 
     if (error) {
       toast({ title: "Erro ao excluir empresa", description: error.message, variant: "destructive" });
@@ -240,13 +249,14 @@ export function useContractManagement(refetchData: () => void): UseContractManag
     }
     // REMOVIDO: refetchData();
     return true;
-  }, [toast]);
+  }, [toast, prefeituraId]);
 
   // --- Aditivos e Notas Fiscais (Sub-tabelas) ---
   
   const saveAdditive = useCallback(async (additive: Omit<Additive, 'id'>, contractId: string, isEditing: boolean) => {
     const payload = toSnakeCase({
       ...additive,
+      prefeituraId, // Adicionando prefeitura_id
       contractId,
       date: additive.date.toISOString().split('T')[0],
     });
@@ -269,24 +279,26 @@ export function useContractManagement(refetchData: () => void): UseContractManag
     // Não chamamos refetchData aqui, pois a atualização do contrato pai (que contém o aditivo)
     // deve ser feita separadamente no componente ContractDetails para recalcular os valores.
     return toCamelCase(data) as Additive;
-  }, [toast]);
+  }, [toast, prefeituraId]);
 
   const deleteAdditive = useCallback(async (additiveId: string) => {
     const { error } = await supabase
       .from('additives')
       .delete()
-      .eq('id', additiveId);
+      .eq('id', additiveId)
+      .eq('prefeitura_id', prefeituraId); // Filtrando por prefeitura_id
 
     if (error) {
       toast({ title: "Erro ao excluir aditivo", description: error.message, variant: "destructive" });
       return false;
     }
     return true;
-  }, [toast]);
+  }, [toast, prefeituraId]);
 
   const saveInvoice = useCallback(async (invoice: Omit<Invoice, 'id'>, contractId: string, isEditing: boolean) => {
     const payload = toSnakeCase({
       ...invoice,
+      prefeituraId, // Adicionando prefeitura_id
       contractId,
       date: invoice.date.toISOString().split('T')[0],
     });
@@ -309,26 +321,27 @@ export function useContractManagement(refetchData: () => void): UseContractManag
     // Não chamamos refetchData aqui, pois a atualização do contrato pai (que contém a nota)
     // deve ser feita separadamente no componente ContractDetails para recalcular os valores.
     return toCamelCase(data) as Invoice;
-  }, [toast]);
+  }, [toast, prefeituraId]);
 
   const deleteInvoice = useCallback(async (invoiceId: string) => {
     const { error } = await supabase
       .from('invoices')
       .delete()
-      .eq('id', invoiceId);
+      .eq('id', invoiceId)
+      .eq('prefeitura_id', prefeituraId); // Filtrando por prefeitura_id
 
     if (error) {
       toast({ title: "Erro ao excluir nota fiscal", description: error.message, variant: "destructive" });
       return false;
     }
     return true;
-  }, [toast]);
+  }, [toast, prefeituraId]);
 
   // --- Fiscais de Contratos ---
 
   const saveFiscal = useCallback(async (fiscalData: { name: string; cpf: string; ordinance: string }) => {
     try {
-      const payload = toSnakeCase(fiscalData);
+      const payload = toSnakeCase({ ...fiscalData, prefeituraId }); // Adicionando prefeitura_id
       
       const { data, error } = await supabase
         .from('fiscals')
@@ -348,7 +361,7 @@ export function useContractManagement(refetchData: () => void): UseContractManag
       toast({ title: "Erro", description: "Falha ao salvar fiscal.", variant: "destructive" });
       return null;
     }
-  }, [toast]);
+  }, [toast, prefeituraId]);
 
   const updateFiscal = useCallback(async (fiscalId: string, fiscalData: { name: string; cpf: string; ordinance: string }) => {
     try {
@@ -357,7 +370,8 @@ export function useContractManagement(refetchData: () => void): UseContractManag
       const { error } = await supabase
         .from('fiscals')
         .update(payload)
-        .eq('id', fiscalId);
+        .eq('id', fiscalId)
+        .eq('prefeitura_id', prefeituraId); // Filtrando por prefeitura_id
 
       if (error) {
         toast({ title: "Erro ao atualizar fiscal", description: error.message, variant: "destructive" });
@@ -371,14 +385,15 @@ export function useContractManagement(refetchData: () => void): UseContractManag
       toast({ title: "Erro", description: "Falha ao atualizar fiscal.", variant: "destructive" });
       return false;
     }
-  }, [toast]);
+  }, [toast, prefeituraId]);
 
   const deleteFiscal = useCallback(async (fiscalId: string) => {
     try {
       const { error } = await supabase
         .from('fiscals')
         .delete()
-        .eq('id', fiscalId);
+        .eq('id', fiscalId)
+        .eq('prefeitura_id', prefeituraId); // Filtrando por prefeitura_id
 
       if (error) {
         toast({ title: "Erro ao excluir fiscal", description: error.message, variant: "destructive" });
@@ -392,13 +407,14 @@ export function useContractManagement(refetchData: () => void): UseContractManag
       toast({ title: "Erro", description: "Falha ao excluir fiscal.", variant: "destructive" });
       return false;
     }
-  }, [toast]);
+  }, [toast, prefeituraId]);
 
   const getAllFiscals = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('fiscals')
         .select('*')
+        .eq('prefeitura_id', prefeituraId) // Filtrando por prefeitura_id
         .order('name');
 
       if (error) {
@@ -412,7 +428,7 @@ export function useContractManagement(refetchData: () => void): UseContractManag
       toast({ title: "Erro", description: "Falha ao buscar fiscais.", variant: "destructive" });
       return [];
     }
-  }, [toast]);
+  }, [toast, prefeituraId]);
 
   return {
     saveContract,

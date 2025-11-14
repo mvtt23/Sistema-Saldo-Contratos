@@ -15,6 +15,7 @@ export interface Contract {
   status: 'active' | 'expired' | 'suspended' | 'completed';
   additives: Additive[];
   invoices: Invoice[];
+  prefeituraId: string; // Adicionado
 }
 
 export interface Additive {
@@ -26,6 +27,7 @@ export interface Additive {
   termChange: number; // in days
   date: Date;
   justification: string;
+  prefeituraId: string; // Adicionado
 }
 
 export interface Payment {
@@ -47,12 +49,14 @@ export interface ManagingUnit {
   email: string;
   phone: string;
   fiscalId?: string;
+  prefeituraId: string; // Adicionado
 }
 
 export interface Program {
   id: string;
   name: string;
   unitId: string;
+  prefeituraId: string; // Adicionado
 }
 
 export interface Invoice {
@@ -61,6 +65,7 @@ export interface Invoice {
   number: string;
   value: number;
   date: Date;
+  prefeituraId: string; // Adicionado
 }
 
 export interface Company {
@@ -69,4 +74,5 @@ export interface Company {
   document: string;
   city: string;
   state: string;
+  prefeituraId: string; // Adicionado
 }
