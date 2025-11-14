@@ -78,7 +78,11 @@ export function useSupabaseData(): SupabaseData {
     const targetPrefeituraId = user?.is_admin ? selectedPrefeituraId : user?.prefeitura_id;
 
     if (!targetPrefeituraId) {
-      setError("ID da prefeitura não encontrado. Selecione uma prefeitura ou faça login novamente.");
+      // Se for Super Admin e selectedPrefeituraId for null, ou se for usuário normal sem prefeitura_id, paramos.
+      // Se o user for null, o App.tsx já está mostrando o Login.
+      if (user) {
+        setError("ID da prefeitura não encontrado. Selecione uma prefeitura ou faça login novamente.");
+      }
       setLoading(false);
       return;
     }
@@ -97,7 +101,6 @@ export function useSupabaseData(): SupabaseData {
         `);
         
       // Se não for Super Admin, ou se for Super Admin e tiver uma prefeitura selecionada, filtramos.
-      // Se for Super Admin e targetPrefeituraId for null (o que não deve acontecer se o AuthContext estiver correto), o RLS deve bloquear.
       if (!user?.is_admin || targetPrefeituraId) {
         contractsQuery = contractsQuery.eq('prefeitura_id', targetPrefeituraId);
       }

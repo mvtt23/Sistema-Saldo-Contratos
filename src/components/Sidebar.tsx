@@ -7,7 +7,8 @@ import {
   Settings as SettingsIcon,
   LogOut,
   Menu,
-  X
+  X,
+  Gavel
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { PageType } from "@/App";
@@ -25,6 +26,7 @@ const menuItems = [
   { id: 'managing-units' as PageType, label: 'Unidades Gestoras', icon: Building2, module: 'managing_units' },
   { id: 'reports' as PageType, label: 'Relatórios', icon: FileBarChart, module: 'reports' },
   { id: 'settings' as PageType, label: 'Configurações', icon: SettingsIcon, module: 'settings' },
+  { id: 'municipality-management' as PageType, label: 'Gerenciar Prefeituras', icon: Gavel, module: 'admin_only' },
 ];
 
 export function Sidebar({ activePage, onPageChange }: SidebarProps) {
@@ -37,7 +39,13 @@ export function Sidebar({ activePage, onPageChange }: SidebarProps) {
 
   // Filtrar itens do menu com base no perfil do usuário
   const filteredMenuItems = menuItems.filter(item => {
-    // Admin pode ver tudo
+    // Super Admin pode ver tudo
+    if (user?.is_admin) return true;
+    
+    // Se for item de admin_only, bloquear para não-admins
+    if (item.module === 'admin_only') return false;
+
+    // Admin (role) pode ver tudo
     if (user?.role === 'admin') return true;
     
     // Visualizador só pode ver: Visão Geral, Contratos (pesquisa) e Relatórios

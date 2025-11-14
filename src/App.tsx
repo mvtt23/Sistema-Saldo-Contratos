@@ -11,11 +11,12 @@ import { ManagingUnits } from "@/components/ManagingUnits";
 import { Reports } from "@/components/Reports";
 import { Settings } from "@/components/Settings";
 import { MunicipalitySelector } from "@/components/MunicipalitySelector"; // Importado
+import { MunicipalityManagement } from "@/components/MunicipalityManagement"; // Importado
 import { Contract } from "@/types/contract";
 import { useSupabaseData } from '@/hooks/useSupabaseData';
 import { useContractManagement } from '@/hooks/useContractManagement';
 
-export type PageType = 'overview' | 'contracts' | 'contract-form' | 'managing-units' | 'reports' | 'settings' | 'contract-details';
+export type PageType = 'overview' | 'contracts' | 'contract-form' | 'managing-units' | 'reports' | 'settings' | 'contract-details' | 'municipality-management';
 
 function App() {
   console.log("App component started rendering."); // Adicionado para depuração
@@ -125,6 +126,8 @@ function App() {
             deleteInvoice={deleteInvoice}
           />
         ) : <Dashboard onFilteredView={handleFilteredContractsView} contracts={contracts} managingUnits={managingUnits} onContractSelect={handleContractSelect} />;
+      case 'municipality-management':
+        return <MunicipalityManagement />;
       default:
         return <Dashboard onFilteredView={handleFilteredContractsView} contracts={contracts} managingUnits={managingUnits} onContractSelect={handleContractSelect} />;
     }
