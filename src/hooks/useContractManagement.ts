@@ -327,10 +327,7 @@ export function useContractManagement(refetchData: () => void): UseContractManag
 
   const saveFiscal = useCallback(async (fiscalData: { name: string; cpf: string; ordinance: string }) => {
     try {
-      const payload = toSnakeCase({
-        ...fiscalData,
-        user_id: (await supabase.auth.getUser()).data.user?.id // Adiciona user_id automaticamente
-      });
+      const payload = toSnakeCase(fiscalData);
       
       const { data, error } = await supabase
         .from('fiscals')
