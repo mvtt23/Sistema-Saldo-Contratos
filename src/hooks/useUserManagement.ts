@@ -37,8 +37,8 @@ export function useUserManagement() {
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   
-  // Usar 'santa-quiteria' como fallback/padrão para criação, mas priorizar o ID do usuário logado
-  const prefeituraId = currentUser?.prefeitura_id || 'santa-quiteria'; 
+  // Usar o ID da prefeitura do usuário logado. Se não estiver logado, não deve carregar dados.
+  const prefeituraId = currentUser?.prefeitura_id; 
 
   // Módulos disponíveis no sistema
   const modules: ModulePermission[] = [
@@ -147,6 +147,11 @@ export function useUserManagement() {
 
   // Criar novo usuário
   const createUser = useCallback(async (userData: { username: string; password: string; role: string }) => {
+    if (!prefeituraId) {
+      toast({ title: "Erro", description: "ID da prefeitura não encontrado. Faça login novamente.", variant: "destructive" });
+      return false;
+    }
+    
     try {
       const { data, error } = await supabase
         .from('users')
@@ -155,7 +160,7 @@ export function useUserManagement() {
           password: userData.password,
           role: userData.role,
           is_active: true,
-          prefeitura_id: 'santa-quiteria', // FORÇANDO O ID AQUI
+          prefeitura_id: prefeituraId, // USANDO ID DINÂMICO
         }])
         .select()
         .single();
@@ -172,7 +177,7 @@ export function useUserManagement() {
         can_edit: perm.can_edit,
         can_create: perm.can_create,
         can_delete: perm.can_delete,
-        prefeitura_id: 'santa-quiteria', // FORÇANDO O ID AQUI
+        prefeitura_id: prefeituraId, // USANDO ID DINÂMICO
       }));
 
       await supabase
@@ -187,10 +192,15 @@ export function useUserManagement() {
       toast({ title: "Erro", description: "Falha ao criar usuário", variant: "destructive" });
       return false;
     }
-  }, [fetchUsers, toast]);
+  }, [fetchUsers, toast, prefeituraId]);
 
   // Atualizar usuário
   const updateUser = useCallback(async (userId: string, userData: { username?: string; password?: string; role?: string; is_active?: boolean }) => {
+    if (!prefeituraId) {
+      toast({ title: "Erro", description: "ID da prefeitura não encontrado. Faça login novamente.", variant: "destructive" });
+      return false;
+    }
+    
     try {
       const { error } = await supabase
         .from('users')
@@ -219,7 +229,7 @@ export function useUserManagement() {
           can_edit: perm.can_edit,
           can_create: perm.can_create,
           can_delete: perm.can_delete,
-          prefeitura_id: prefeituraId, // INSERINDO prefeitura_id
+          prefeitura_id: prefeituraId, // USANDO ID DINÂMICO
         }));
 
         await supabase
@@ -239,6 +249,11 @@ export function useUserManagement() {
 
   // Excluir usuário
   const deleteUser = useCallback(async (userId: string) => {
+    if (!prefeituraId) {
+      toast({ title: "Erro", description: "ID da prefeitura não encontrado. Faça login novamente.", variant: "destructive" });
+      return false;
+    }
+    
     try {
       // Excluir permissões primeiro
       await supabase
@@ -268,6 +283,11 @@ export function useUserManagement() {
 
   // Atualizar permissões específicas de um usuário
   const updateUserPermissions = useCallback(async (userId: string, userPermissions: ModulePermission[]) => {
+    if (!prefeituraId) {
+      toast({ title: "Erro", description: "ID da prefeitura não encontrado. Faça login novamente.", variant: "destructive" });
+      return false;
+    }
+    
     try {
       // Remover permissões antigas
       await supabase
@@ -284,7 +304,7 @@ export function useUserManagement() {
         can_edit: perm.can_edit,
         can_create: perm.can_create,
         can_delete: perm.can_delete,
-        prefeitura_id: prefeituraId, // INSERINDO prefeitura_id
+        prefeitura_id: prefeituraId, // USANDO ID DINÂMICO
       }));
 
       await supabase
