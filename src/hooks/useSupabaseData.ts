@@ -65,7 +65,7 @@ const parseDates = (data: any[]): any[] => {
 };
 
 export function useSupabaseData(): SupabaseData {
-  const { user } = useAuth(); // Obter usuário logado
+  const { user, selectedPrefeituraId } = useAuth(); // Obter usuário logado e prefeitura selecionada
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [managingUnits, setManagingUnits] = useState<ManagingUnit[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
@@ -74,16 +74,15 @@ export function useSupabaseData(): SupabaseData {
   const { toast } = useToast();
 
   const fetchData = useCallback(async () => {
-    if (!user?.prefeitura_id && !user?.is_admin) {
-      // Se o usuário não for admin e não tiver prefeitura_id, paramos.
-      setError("ID da prefeitura não encontrado. Faça login novamente.");
+    // Determina o ID da prefeitura a ser usado para filtros explícitos
+    const targetPrefeituraId = user?.is_admin ? selectedPrefeituraId : user?.prefeitura_id;
+
+    if (!targetPrefeituraId) {
+      setError("ID da prefeitura não encontrado. Selecione uma prefeitura ou faça login novamente.");
       setLoading(false);
       return;
     }
     
-    const prefeituraId = user.prefeitura_id;
-    const isSuperAdmin = user.is_admin;
-
     setLoading(true);
     setError(null);
 
@@ -97,8 +96,10 @@ export function useSupabaseData(): SupabaseData {
           invoices (*)
         `);
         
-      if (!isSuperAdmin) {
-        contractsQuery = contractsQuery.eq('prefeitura_id', prefeituraId);
+      // Se não for Super Admin, ou se for Super Admin e tiver uma prefeitura selecionada, filtramos.
+      // Se for Super Admin e targetPrefeituraId for null (o que não deve acontecer se o AuthContext estiver correto), o RLS deve bloquear.
+      if (!user?.is_admin || targetPrefeituraId) {
+        contractsQuery = contractsQuery.eq('prefeitura_id', targetPrefeituraId);
       }
 
       const { data: contractsData, error: contractsError } = await contractsQuery;
@@ -113,8 +114,8 @@ export function useSupabaseData(): SupabaseData {
           programs (*)
         `);
         
-      if (!isSuperAdmin) {
-        unitsQuery = unitsQuery.eq('prefeitura_id', prefeituraId);
+      if (!user?.is_admin || targetPrefeituraId) {
+        unitsQuery = unitsQuery.eq('prefeitura_id', targetPrefeituraId);
       }
 
       const { data: unitsData, error: unitsError } = await unitsQuery;
@@ -126,8 +127,8 @@ export function useSupabaseData(): SupabaseData {
         .from('companies')
         .select('*');
         
-      if (!isSuperAdmin) {
-        companiesQuery = companiesQuery.eq('prefeitura_id', prefeituraId);
+      if (!user?.is_admin || targetPrefeituraId) {
+        companiesQuery = companiesQuery.eq('prefeitura_id', targetPrefeituraId);
       }
 
       const { data: companiesData, error: companiesError } = await companiesQuery;
@@ -154,13 +155,14 @@ export function useSupabaseData(): SupabaseData {
     } finally {
       setLoading(false);
     }
-  }, [toast, user?.prefeitura_id, user?.is_admin]);
+  }, [toast, user?.is_admin, user?.prefeitura_id, selectedPrefeituraId]);
 
   useEffect(() => {
+    // Refetch sempre que o usuário ou a prefeitura selecionada mudar
     if (user?.prefeitura_id || user?.is_admin) {
       fetchData();
     }
-  }, [fetchData, user?.prefeitura_id, user?.is_admin]);
+  }, [fetchData, user?.prefeitura_id, user?.is_admin, selectedPrefeituraId]);
 
   return { contracts, managingUnits, companies, loading, error, refetch: fetchData };
 }

@@ -26,19 +26,36 @@ interface AuthContextType {
   signOut: () => Promise<void>;
   hasPermission: (module: string, action: 'view' | 'edit' | 'create' | 'delete') => boolean;
   canAccessModule: (module: string) => boolean;
+  
+  // Novo estado para Super Admin
+  selectedPrefeituraId: string | null;
+  setPrefeituraSelecionada: (id: string) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const SELECTED_PREFEITURA_KEY = 'selected_prefeitura_id';
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [selectedPrefeituraId, setSelectedPrefeituraId] = useState<string | null>(null);
 
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
       try {
-        setUser(JSON.parse(storedUser));
+        const parsedUser = JSON.parse(storedUser);
+        setUser(parsedUser);
+        
+        // Se for admin, tenta carregar a prefeitura selecionada
+        if (parsedUser.is_admin) {
+          const storedPrefeitura = localStorage.getItem(SELECTED_PREFEITURA_KEY);
+          setSelectedPrefeituraId(storedPrefeitura || parsedUser.prefeitura_id);
+        } else {
+          // Usuário normal usa o próprio ID
+          setSelectedPrefeituraId(parsedUser.prefeitura_id);
+        }
       } catch (error) {
         console.error('Error parsing stored user:', error);
         localStorage.removeItem('user');
@@ -47,20 +64,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setLoading(false);
   }, []);
 
+  const setPrefeituraSelecionada = (id: string) => {
+    if (user?.is_admin) {
+      setSelectedPrefeituraId(id);
+      localStorage.setItem(SELECTED_PREFEITURA_KEY, id);
+    }
+  };
+
   const signIn = async (username: string, password: string) => {
     try {
       console.log('Attempting login for user:', username);
       
-      // Verificar se o Supabase está configurado corretamente
       if (!supabase) {
         console.error('Supabase client not initialized');
         return { error: { message: 'Sistema de autenticação não configurado. Por favor, contate o administrador.' } };
       }
       
-      // Buscar o usuário pelo username, incluindo is_admin
       const { data: userData, error: userError } = await supabase
         .from('users')
-        .select('id, username, role, is_active, password, prefeitura_id, is_admin') // Buscando is_admin
+        .select('id, username, role, is_active, password, prefeitura_id, is_admin')
         .eq('username', username)
         .maybeSingle();
 
@@ -74,19 +96,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { error: { message: 'Usuário não encontrado. Verifique o nome de usuário.' } };
       }
 
-      // Verificar se o usuário está ativo
       if (!userData.is_active) {
         console.log('User is inactive:', username);
         return { error: { message: 'Usuário inativo. Entre em contato com o administrador.' } };
       }
 
-      // Verificar a senha (em um ambiente real, use hashing)
       if (userData.password !== password) {
         console.log('Password mismatch for user:', username);
         return { error: { message: 'Senha incorreta. Tente novamente.' } };
       }
 
-      // Buscar permissões do usuário
       const { data: permissionsData, error: permissionsError } = await supabase
         .from('user_permissions')
         .select('module, can_view, can_edit, can_create, can_delete')
@@ -102,10 +121,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         username: userData.username,
         role: userData.role,
         is_active: userData.is_active,
-        is_admin: userData.is_admin, // Adicionando is_admin
+        is_admin: userData.is_admin,
         permissions: permissionsData || [],
         prefeitura_id: userData.prefeitura_id,
       };
+
+      // Configura a prefeitura selecionada após o login
+      if (userWithPermissions.is_admin) {
+        const storedPrefeitura = localStorage.getItem(SELECTED_PREFEITURA_KEY);
+        setSelectedPrefeituraId(storedPrefeitura || userWithPermissions.prefeitura_id);
+      } else {
+        setSelectedPrefeituraId(userWithPermissions.prefeitura_id);
+      }
 
       console.log('Login successful for user:', username);
       setUser(userWithPermissions);
@@ -120,14 +147,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = async () => {
     console.log('Signing out user:', user?.username);
     setUser(null);
+    setSelectedPrefeituraId(null);
     localStorage.removeItem('user');
+    localStorage.removeItem(SELECTED_PREFEITURA_KEY);
   };
 
   const hasPermission = (module: string, action: 'view' | 'edit' | 'create' | 'delete') => {
     if (!user) return false;
-    // Super Admin tem acesso total, ignorando permissões específicas
     if (user.is_admin) return true; 
-    if (user.role === 'admin') return true; // Mantendo a regra de role 'admin' por compatibilidade, mas 'is_admin' é o novo superpoder.
+    if (user.role === 'admin') return true;
 
     const permission = user.permissions.find(p => p.module === module);
     if (!permission) return false;
@@ -144,7 +172,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const canAccessModule = (module: string) => {
     if (!user) return false;
-    if (user.is_admin) return true; // Super Admin pode acessar tudo
+    if (user.is_admin) return true;
     if (user.role === 'admin') return true;
 
     const permission = user.permissions.find(p => p.module === module);
@@ -158,6 +186,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signOut,
     hasPermission,
     canAccessModule,
+    selectedPrefeituraId,
+    setPrefeituraSelecionada,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

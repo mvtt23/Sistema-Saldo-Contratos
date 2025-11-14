@@ -31,14 +31,14 @@ interface ModulePermission {
 }
 
 export function useUserManagement() {
-  const { user: currentUser } = useAuth(); // Obter usuário logado para o prefeitura_id
+  const { user: currentUser, selectedPrefeituraId } = useAuth(); // Obter prefeitura selecionada
   const [users, setUsers] = useState<User[]>([]);
   const [permissions, setPermissions] = useState<Record<string, ModulePermission[]>>({});
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   
-  // Usar o ID da prefeitura do usuário logado. Se não estiver logado, não deve carregar dados.
-  const prefeituraId = currentUser?.prefeitura_id; 
+  // Determina o ID da prefeitura a ser usado para filtros explícitos (leitura/exclusão)
+  const targetPrefeituraId = currentUser?.is_admin ? selectedPrefeituraId : currentUser?.prefeitura_id;
 
   // Módulos disponíveis no sistema
   const modules: ModulePermission[] = [
@@ -90,14 +90,14 @@ export function useUserManagement() {
 
   // Buscar todos os usuários
   const fetchUsers = useCallback(async () => {
-    if (!prefeituraId) return;
+    if (!targetPrefeituraId) return;
 
     setLoading(true);
     try {
       const { data, error } = await supabase
         .from('users')
         .select('*')
-        .eq('prefeitura_id', prefeituraId) // FILTRO
+        .eq('prefeitura_id', targetPrefeituraId) // FILTRO
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -112,7 +112,7 @@ export function useUserManagement() {
           .from('user_permissions')
           .select('*')
           .eq('user_id', user.id)
-          .eq('prefeitura_id', prefeituraId); // FILTRO
+          .eq('prefeitura_id', targetPrefeituraId); // FILTRO
 
         // Mapear permissões para o formato correto
         const userModulePerms = modules.map(module => {
@@ -143,11 +143,13 @@ export function useUserManagement() {
     } finally {
       setLoading(false);
     }
-  }, [toast, prefeituraId]);
+  }, [toast, targetPrefeituraId]);
 
   // Criar novo usuário
-  const createUser = useCallback(async (userData: { username: string; password: string; role: string }) => {
-    if (!prefeituraId) {
+  const createUser = useCallback(async (userData: { username: string; password: string; role: string; prefeituraId: string }) => {
+    const finalPrefeituraId = currentUser?.is_admin ? userData.prefeituraId : currentUser?.prefeitura_id;
+    
+    if (!finalPrefeituraId) {
       toast({ title: "Erro", description: "ID da prefeitura não encontrado. Faça login novamente.", variant: "destructive" });
       return false;
     }
@@ -160,7 +162,7 @@ export function useUserManagement() {
           password: userData.password,
           role: userData.role,
           is_active: true,
-          prefeitura_id: prefeituraId, // USANDO ID DINÂMICO
+          prefeitura_id: finalPrefeituraId, // USANDO ID DINÂMICO
         }])
         .select()
         .single();
@@ -177,7 +179,7 @@ export function useUserManagement() {
         can_edit: perm.can_edit,
         can_create: perm.can_create,
         can_delete: perm.can_delete,
-        prefeitura_id: prefeituraId, // USANDO ID DINÂMICO
+        prefeitura_id: finalPrefeituraId, // USANDO ID DINÂMICO
       }));
 
       await supabase
@@ -192,21 +194,31 @@ export function useUserManagement() {
       toast({ title: "Erro", description: "Falha ao criar usuário", variant: "destructive" });
       return false;
     }
-  }, [fetchUsers, toast, prefeituraId]);
+  }, [fetchUsers, toast, currentUser?.is_admin, currentUser?.prefeitura_id]);
 
   // Atualizar usuário
-  const updateUser = useCallback(async (userId: string, userData: { username?: string; password?: string; role?: string; is_active?: boolean }) => {
-    if (!prefeituraId) {
+  const updateUser = useCallback(async (userId: string, userData: { username?: string; password?: string; role?: string; is_active?: boolean; prefeituraId?: string }) => {
+    const finalPrefeituraId = currentUser?.is_admin ? userData.prefeituraId : currentUser?.prefeitura_id;
+    
+    if (!finalPrefeituraId) {
       toast({ title: "Erro", description: "ID da prefeitura não encontrado. Faça login novamente.", variant: "destructive" });
       return false;
     }
     
     try {
+      const updatePayload: any = { ...userData };
+      if (currentUser?.is_admin && userData.prefeituraId) {
+        updatePayload.prefeitura_id = userData.prefeituraId;
+        delete updatePayload.prefeituraId; // Remove do payload de update para evitar erro de coluna inexistente
+      } else {
+        delete updatePayload.prefeituraId;
+      }
+
       const { error } = await supabase
         .from('users')
-        .update(userData)
+        .update(updatePayload)
         .eq('id', userId)
-        .eq('prefeitura_id', prefeituraId); // Filtrando por prefeitura_id
+        .eq('prefeitura_id', targetPrefeituraId); // Filtrando pelo ID ativo
 
       if (error) throw error;
 
@@ -217,7 +229,7 @@ export function useUserManagement() {
           .from('user_permissions')
           .delete()
           .eq('user_id', userId)
-          .eq('prefeitura_id', prefeituraId); // Filtrando por prefeitura_id
+          .eq('prefeitura_id', targetPrefeituraId); // Filtrando pelo ID ativo
 
         // Adicionar novas permissões
         const defaultPermissions = getDefaultPermissions(userData.role);
@@ -229,7 +241,7 @@ export function useUserManagement() {
           can_edit: perm.can_edit,
           can_create: perm.can_create,
           can_delete: perm.can_delete,
-          prefeitura_id: prefeituraId, // USANDO ID DINÂMICO
+          prefeitura_id: finalPrefeituraId, // USANDO ID DINÂMICO
         }));
 
         await supabase
@@ -245,11 +257,11 @@ export function useUserManagement() {
       toast({ title: "Erro", description: "Falha ao atualizar usuário", variant: "destructive" });
       return false;
     }
-  }, [fetchUsers, toast, prefeituraId]);
+  }, [fetchUsers, toast, currentUser?.is_admin, currentUser?.prefeitura_id, targetPrefeituraId]);
 
   // Excluir usuário
   const deleteUser = useCallback(async (userId: string) => {
-    if (!prefeituraId) {
+    if (!targetPrefeituraId) {
       toast({ title: "Erro", description: "ID da prefeitura não encontrado. Faça login novamente.", variant: "destructive" });
       return false;
     }
@@ -260,14 +272,14 @@ export function useUserManagement() {
         .from('user_permissions')
         .delete()
         .eq('user_id', userId)
-        .eq('prefeitura_id', prefeituraId); // Filtrando por prefeitura_id
+        .eq('prefeitura_id', targetPrefeituraId); // Filtrando pelo ID ativo
 
       // Excluir usuário
       const { error } = await supabase
         .from('users')
         .delete()
         .eq('id', userId)
-        .eq('prefeitura_id', prefeituraId); // Filtrando por prefeitura_id
+        .eq('prefeitura_id', targetPrefeituraId); // Filtrando pelo ID ativo
 
       if (error) throw error;
 
@@ -279,11 +291,11 @@ export function useUserManagement() {
       toast({ title: "Erro", description: "Falha ao excluir usuário", variant: "destructive" });
       return false;
     }
-  }, [fetchUsers, toast, prefeituraId]);
+  }, [fetchUsers, toast, targetPrefeituraId]);
 
   // Atualizar permissões específicas de um usuário
   const updateUserPermissions = useCallback(async (userId: string, userPermissions: ModulePermission[]) => {
-    if (!prefeituraId) {
+    if (!targetPrefeituraId) {
       toast({ title: "Erro", description: "ID da prefeitura não encontrado. Faça login novamente.", variant: "destructive" });
       return false;
     }
@@ -294,7 +306,7 @@ export function useUserManagement() {
         .from('user_permissions')
         .delete()
         .eq('user_id', userId)
-        .eq('prefeitura_id', prefeituraId); // Filtrando por prefeitura_id
+        .eq('prefeitura_id', targetPrefeituraId); // Filtrando pelo ID ativo
 
       // Adicionar novas permissões
       const permissionsToInsert = userPermissions.map(perm => ({
@@ -304,7 +316,7 @@ export function useUserManagement() {
         can_edit: perm.can_edit,
         can_create: perm.can_create,
         can_delete: perm.can_delete,
-        prefeitura_id: prefeituraId, // USANDO ID DINÂMICO
+        prefeitura_id: targetPrefeituraId, // USANDO ID DINÂMICO
       }));
 
       await supabase
@@ -319,14 +331,14 @@ export function useUserManagement() {
       toast({ title: "Erro", description: "Falha ao atualizar permissões", variant: "destructive" });
       return false;
     }
-  }, [fetchUsers, toast, prefeituraId]);
+  }, [fetchUsers, toast, targetPrefeituraId]);
 
   // Carregar dados iniciais
   useEffect(() => {
-    if (currentUser?.prefeitura_id) {
+    if (targetPrefeituraId) {
       fetchUsers();
     }
-  }, [fetchUsers, currentUser?.prefeitura_id]);
+  }, [fetchUsers, targetPrefeituraId]);
 
   return {
     users,

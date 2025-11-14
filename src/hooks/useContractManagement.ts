@@ -64,15 +64,17 @@ const toCamelCase = (obj: any) => {
 
 export function useContractManagement(refetchData: () => void): UseContractManagement {
   const { toast } = useToast();
-  const { user } = useAuth();
-  const prefeituraId = user?.prefeitura_id; 
+  const { user, selectedPrefeituraId } = useAuth();
   const isSuperAdmin = user?.is_admin;
+
+  // Determina o ID da prefeitura a ser usado para filtros explícitos (leitura/exclusão)
+  const currentPrefeituraId = isSuperAdmin ? selectedPrefeituraId : user?.prefeitura_id;
 
   // --- Contratos ---
 
   const saveContract = useCallback(async (contractData: Omit<Contract, 'id' | 'additives' | 'invoices'>) => {
     // Se não for Super Admin, usa o ID do usuário logado. Se for Super Admin, usa o ID do formulário.
-    const finalPrefeituraId = isSuperAdmin ? contractData.prefeituraId : prefeituraId;
+    const finalPrefeituraId = isSuperAdmin ? contractData.prefeituraId : user?.prefeitura_id;
     
     if (!finalPrefeituraId) {
       toast({ title: "Erro de Autenticação", description: "ID da prefeitura não encontrado. Faça login novamente.", variant: "destructive" });
@@ -103,10 +105,10 @@ export function useContractManagement(refetchData: () => void): UseContractManag
 
     refetchData();
     return toCamelCase(data) as Contract;
-  }, [refetchData, toast, prefeituraId, isSuperAdmin]);
+  }, [refetchData, toast, user?.prefeitura_id, isSuperAdmin]);
 
   const updateContract = useCallback(async (contract: Contract) => {
-    const finalPrefeituraId = isSuperAdmin ? contract.prefeituraId : prefeituraId;
+    const finalPrefeituraId = isSuperAdmin ? contract.prefeituraId : user?.prefeitura_id;
     
     if (!finalPrefeituraId) {
       toast({ title: "Erro de Autenticação", description: "ID da prefeitura não encontrado. Faça login novamente.", variant: "destructive" });
@@ -135,10 +137,10 @@ export function useContractManagement(refetchData: () => void): UseContractManag
 
     refetchData();
     return toCamelCase(data) as Contract;
-  }, [refetchData, toast, prefeituraId, isSuperAdmin]);
+  }, [refetchData, toast, user?.prefeitura_id, isSuperAdmin]);
 
   const deleteContract = useCallback(async (contractId: string) => {
-    if (!prefeituraId && !isSuperAdmin) {
+    if (!currentPrefeituraId) {
       toast({ title: "Erro de Autenticação", description: "ID da prefeitura não encontrado. Faça login novamente.", variant: "destructive" });
       return false;
     }
@@ -147,7 +149,7 @@ export function useContractManagement(refetchData: () => void): UseContractManag
       .from('contracts')
       .delete()
       .eq('id', contractId)
-      .eq('prefeitura_id', prefeituraId); // RLS cuidará do Super Admin, mas filtramos por segurança
+      .eq('prefeitura_id', currentPrefeituraId); // Filtrando pelo ID ativo
 
     if (error) {
       toast({ title: "Erro ao excluir contrato", description: error.message, variant: "destructive" });
@@ -157,12 +159,12 @@ export function useContractManagement(refetchData: () => void): UseContractManag
     refetchData();
     toast({ title: "Sucesso", description: "Contrato excluído com sucesso.", variant: "success" });
     return true;
-  }, [refetchData, toast, prefeituraId, isSuperAdmin]);
+  }, [refetchData, toast, currentPrefeituraId]);
 
   // --- Unidades Gestoras ---
 
   const saveUnit = useCallback(async (unitData: Omit<ManagingUnit, 'programs'>, isEditing: boolean) => {
-    const finalPrefeituraId = isSuperAdmin ? unitData.prefeituraId : prefeituraId;
+    const finalPrefeituraId = isSuperAdmin ? unitData.prefeituraId : user?.prefeitura_id;
     
     if (!finalPrefeituraId) {
       toast({ title: "Erro de Autenticação", description: "ID da prefeitura não encontrado. Faça login novamente.", variant: "destructive" });
@@ -189,10 +191,10 @@ export function useContractManagement(refetchData: () => void): UseContractManag
     refetchData();
     toast({ title: "Sucesso", description: `Unidade ${isEditing ? 'atualizada' : 'salva'} com sucesso.`, variant: "success" });
     return toCamelCase(data) as ManagingUnit;
-  }, [refetchData, toast, prefeituraId, isSuperAdmin]);
+  }, [refetchData, toast, user?.prefeitura_id, isSuperAdmin]);
 
   const deleteUnit = useCallback(async (unitId: string) => {
-    if (!prefeituraId && !isSuperAdmin) {
+    if (!currentPrefeituraId) {
       toast({ title: "Erro de Autenticação", description: "ID da prefeitura não encontrado. Faça login novamente.", variant: "destructive" });
       return false;
     }
@@ -201,7 +203,7 @@ export function useContractManagement(refetchData: () => void): UseContractManag
       .from('managing_units')
       .delete()
       .eq('id', unitId)
-      .eq('prefeitura_id', prefeituraId); 
+      .eq('prefeitura_id', currentPrefeituraId); 
 
     if (error) {
       toast({ title: "Erro ao excluir unidade", description: error.message, variant: "destructive" });
@@ -211,12 +213,12 @@ export function useContractManagement(refetchData: () => void): UseContractManag
     refetchData();
     toast({ title: "Sucesso", description: "Unidade gestora excluída com sucesso.", variant: "success" });
     return true;
-  }, [refetchData, toast, prefeituraId, isSuperAdmin]);
+  }, [refetchData, toast, currentPrefeituraId]);
 
   // --- Programas ---
 
   const saveProgram = useCallback(async (programData: Omit<Program, 'id'>, isEditing: boolean) => {
-    const finalPrefeituraId = isSuperAdmin ? programData.prefeituraId : prefeituraId;
+    const finalPrefeituraId = isSuperAdmin ? programData.prefeituraId : user?.prefeitura_id;
     
     if (!finalPrefeituraId) {
       toast({ title: "Erro de Autenticação", description: "ID da prefeitura não encontrado. Faça login novamente.", variant: "destructive" });
@@ -243,10 +245,10 @@ export function useContractManagement(refetchData: () => void): UseContractManag
     refetchData();
     toast({ title: "Sucesso", description: `Programa ${isEditing ? 'atualizado' : 'salvo'} com sucesso.`, variant: "success" });
     return toCamelCase(data) as Program;
-  }, [refetchData, toast, prefeituraId, isSuperAdmin]);
+  }, [refetchData, toast, user?.prefeitura_id, isSuperAdmin]);
 
   const deleteProgram = useCallback(async (programId: string) => {
-    if (!prefeituraId && !isSuperAdmin) {
+    if (!currentPrefeituraId) {
       toast({ title: "Erro de Autenticação", description: "ID da prefeitura não encontrado. Faça login novamente.", variant: "destructive" });
       return false;
     }
@@ -255,7 +257,7 @@ export function useContractManagement(refetchData: () => void): UseContractManag
       .from('programs')
       .delete()
       .eq('id', programId)
-      .eq('prefeitura_id', prefeituraId); 
+      .eq('prefeitura_id', currentPrefeituraId); 
 
     if (error) {
       toast({ title: "Erro ao excluir programa", description: error.message, variant: "destructive" });
@@ -265,12 +267,12 @@ export function useContractManagement(refetchData: () => void): UseContractManag
     refetchData();
     toast({ title: "Sucesso", description: "Programa excluído com sucesso.", variant: "success" });
     return true;
-  }, [refetchData, toast, prefeituraId, isSuperAdmin]);
+  }, [refetchData, toast, currentPrefeituraId]);
 
   // --- Empresas (Companies) ---
 
   const saveCompany = useCallback(async (companyData: Omit<Company, 'id'>, isEditing: boolean) => {
-    const finalPrefeituraId = isSuperAdmin ? companyData.prefeituraId : prefeituraId;
+    const finalPrefeituraId = isSuperAdmin ? companyData.prefeituraId : user?.prefeitura_id;
     
     if (!finalPrefeituraId) {
       toast({ title: "Erro de Autenticação", description: "ID da prefeitura não encontrado. Faça login novamente.", variant: "destructive" });
@@ -297,10 +299,10 @@ export function useContractManagement(refetchData: () => void): UseContractManag
 
     toast({ title: "Sucesso", description: `Empresa ${isEditing ? 'atualizada' : 'salva'} com sucesso.`, variant: "success" });
     return toCamelCase(data) as Company;
-  }, [toast, prefeituraId, isSuperAdmin]);
+  }, [toast, user?.prefeitura_id, isSuperAdmin]);
 
   const deleteCompany = useCallback(async (companyId: string) => {
-    if (!prefeituraId && !isSuperAdmin) {
+    if (!currentPrefeituraId) {
       toast({ title: "Erro de Autenticação", description: "ID da prefeitura não encontrado. Faça login novamente.", variant: "destructive" });
       return false;
     }
@@ -309,19 +311,19 @@ export function useContractManagement(refetchData: () => void): UseContractManag
       .from('companies')
       .delete()
       .eq('id', companyId)
-      .eq('prefeitura_id', prefeituraId); 
+      .eq('prefeitura_id', currentPrefeituraId); 
 
     if (error) {
       toast({ title: "Erro ao excluir empresa", description: error.message, variant: "destructive" });
       return false;
     }
     return true;
-  }, [toast, prefeituraId, isSuperAdmin]);
+  }, [toast, currentPrefeituraId]);
 
   // --- Aditivos e Notas Fiscais (Sub-tabelas) ---
   
   const saveAdditive = useCallback(async (additive: Omit<Additive, 'id'>, contractId: string, isEditing: boolean) => {
-    const finalPrefeituraId = isSuperAdmin ? additive.prefeituraId : prefeituraId;
+    const finalPrefeituraId = isSuperAdmin ? additive.prefeituraId : user?.prefeitura_id;
     
     if (!finalPrefeituraId) {
       toast({ title: "Erro de Autenticação", description: "ID da prefeitura não encontrado. Faça login novamente.", variant: "destructive" });
@@ -351,10 +353,10 @@ export function useContractManagement(refetchData: () => void): UseContractManag
     }
 
     return toCamelCase(data) as Additive;
-  }, [toast, prefeituraId, isSuperAdmin]);
+  }, [toast, user?.prefeitura_id, isSuperAdmin]);
 
   const deleteAdditive = useCallback(async (additiveId: string) => {
-    if (!prefeituraId && !isSuperAdmin) {
+    if (!currentPrefeituraId) {
       toast({ title: "Erro de Autenticação", description: "ID da prefeitura não encontrado. Faça login novamente.", variant: "destructive" });
       return false;
     }
@@ -363,17 +365,17 @@ export function useContractManagement(refetchData: () => void): UseContractManag
       .from('additives')
       .delete()
       .eq('id', additiveId)
-      .eq('prefeitura_id', prefeituraId); 
+      .eq('prefeitura_id', currentPrefeituraId); 
 
     if (error) {
       toast({ title: "Erro ao excluir aditivo", description: error.message, variant: "destructive" });
       return false;
     }
     return true;
-  }, [toast, prefeituraId, isSuperAdmin]);
+  }, [toast, currentPrefeituraId]);
 
   const saveInvoice = useCallback(async (invoice: Omit<Invoice, 'id'>, contractId: string, isEditing: boolean) => {
-    const finalPrefeituraId = isSuperAdmin ? invoice.prefeituraId : prefeituraId;
+    const finalPrefeituraId = isSuperAdmin ? invoice.prefeituraId : user?.prefeitura_id;
     
     if (!finalPrefeituraId) {
       toast({ title: "Erro de Autenticação", description: "ID da prefeitura não encontrado. Faça login novamente.", variant: "destructive" });
@@ -403,10 +405,10 @@ export function useContractManagement(refetchData: () => void): UseContractManag
     }
 
     return toCamelCase(data) as Invoice;
-  }, [toast, prefeituraId, isSuperAdmin]);
+  }, [toast, user?.prefeitura_id, isSuperAdmin]);
 
   const deleteInvoice = useCallback(async (invoiceId: string) => {
-    if (!prefeituraId && !isSuperAdmin) {
+    if (!currentPrefeituraId) {
       toast({ title: "Erro de Autenticação", description: "ID da prefeitura não encontrado. Faça login novamente.", variant: "destructive" });
       return false;
     }
@@ -415,19 +417,19 @@ export function useContractManagement(refetchData: () => void): UseContractManag
       .from('invoices')
       .delete()
       .eq('id', invoiceId)
-      .eq('prefeitura_id', prefeituraId); 
+      .eq('prefeitura_id', currentPrefeituraId); 
 
     if (error) {
       toast({ title: "Erro ao excluir nota fiscal", description: error.message, variant: "destructive" });
       return false;
     }
     return true;
-  }, [toast, prefeituraId, isSuperAdmin]);
+  }, [toast, currentPrefeituraId]);
 
   // --- Fiscais de Contratos ---
 
   const saveFiscal = useCallback(async (fiscalData: FiscalData) => {
-    const finalPrefeituraId = isSuperAdmin ? fiscalData.prefeituraId : prefeituraId;
+    const finalPrefeituraId = isSuperAdmin ? fiscalData.prefeituraId : user?.prefeitura_id;
     
     if (!finalPrefeituraId) {
       toast({ title: "Erro de Autenticação", description: "ID da prefeitura não encontrado. Faça login novamente.", variant: "destructive" });
@@ -455,10 +457,10 @@ export function useContractManagement(refetchData: () => void): UseContractManag
       toast({ title: "Erro", description: "Falha ao salvar fiscal.", variant: "destructive" });
       return null;
     }
-  }, [toast, prefeituraId, isSuperAdmin]);
+  }, [toast, user?.prefeitura_id, isSuperAdmin]);
 
   const updateFiscal = useCallback(async (fiscalId: string, fiscalData: FiscalData) => {
-    const finalPrefeituraId = isSuperAdmin ? fiscalData.prefeituraId : prefeituraId;
+    const finalPrefeituraId = isSuperAdmin ? fiscalData.prefeituraId : user?.prefeitura_id;
     
     if (!finalPrefeituraId) {
       toast({ title: "Erro de Autenticação", description: "ID da prefeitura não encontrado. Faça login novamente.", variant: "destructive" });
@@ -486,10 +488,10 @@ export function useContractManagement(refetchData: () => void): UseContractManag
       toast({ title: "Erro", description: "Falha ao atualizar fiscal.", variant: "destructive" });
       return false;
     }
-  }, [toast, prefeituraId, isSuperAdmin]);
+  }, [toast, user?.prefeitura_id, isSuperAdmin]);
 
   const deleteFiscal = useCallback(async (fiscalId: string) => {
-    if (!prefeituraId && !isSuperAdmin) {
+    if (!currentPrefeituraId) {
       toast({ title: "Erro de Autenticação", description: "ID da prefeitura não encontrado. Faça login novamente.", variant: "destructive" });
       return false;
     }
@@ -499,7 +501,7 @@ export function useContractManagement(refetchData: () => void): UseContractManag
         .from('fiscals')
         .delete()
         .eq('id', fiscalId)
-        .eq('prefeitura_id', prefeituraId); 
+        .eq('prefeitura_id', currentPrefeituraId); 
 
       if (error) {
         toast({ title: "Erro ao excluir fiscal", description: error.message, variant: "destructive" });
@@ -513,21 +515,20 @@ export function useContractManagement(refetchData: () => void): UseContractManag
       toast({ title: "Erro", description: "Falha ao excluir fiscal.", variant: "destructive" });
       return false;
     }
-  }, [toast, prefeituraId, isSuperAdmin]);
+  }, [toast, currentPrefeituraId]);
 
   const getAllFiscals = useCallback(async () => {
-    if (!prefeituraId && !isSuperAdmin) return [];
+    if (!currentPrefeituraId) return [];
     
     try {
-      // Se for Super Admin, buscamos todos os fiscais (RLS permite)
-      // Se não for, buscamos apenas os da prefeituraId (RLS permite)
       let query = supabase
         .from('fiscals')
         .select('*')
         .order('name');
         
-      if (!isSuperAdmin) {
-        query = query.eq('prefeitura_id', prefeituraId);
+      // Se não for Super Admin, ou se for Super Admin e tiver uma prefeitura selecionada, filtramos.
+      if (!isSuperAdmin || currentPrefeituraId) {
+        query = query.eq('prefeitura_id', currentPrefeituraId);
       }
 
       const { data, error } = await query;
@@ -543,7 +544,7 @@ export function useContractManagement(refetchData: () => void): UseContractManag
       toast({ title: "Erro", description: "Falha ao buscar fiscais.", variant: "destructive" });
       return [];
     }
-  }, [toast, prefeituraId, isSuperAdmin]);
+  }, [toast, currentPrefeituraId, isSuperAdmin]);
 
   return {
     saveContract,

@@ -10,6 +10,7 @@ import { ContractForm } from "@/components/ContractForm";
 import { ManagingUnits } from "@/components/ManagingUnits";
 import { Reports } from "@/components/Reports";
 import { Settings } from "@/components/Settings";
+import { MunicipalitySelector } from "@/components/MunicipalitySelector"; // Importado
 import { Contract } from "@/types/contract";
 import { useSupabaseData } from '@/hooks/useSupabaseData';
 import { useContractManagement } from '@/hooks/useContractManagement';
@@ -150,6 +151,7 @@ function App() {
       
       <main className="flex-1 ml-0 md:ml-64">
         <div className="p-4 md:p-8">
+          {user.is_admin && <MunicipalitySelector />}
           {renderContent()}
         </div>
       </main>
