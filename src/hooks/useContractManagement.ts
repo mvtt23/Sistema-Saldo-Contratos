@@ -54,7 +54,7 @@ const toCamelCase = (obj: any) => {
 export function useContractManagement(refetchData: () => void): UseContractManagement {
   const { toast } = useToast();
   const { user } = useAuth();
-  const prefeituraId = user?.prefeitura_id || 'default_municipality';
+  const prefeituraId = user?.prefeitura_id || 'santa-quiteria'; // Alterado para 'santa-quiteria'
 
   // --- Contratos ---
 

@@ -37,7 +37,8 @@ export function useUserManagement() {
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   
-  const prefeituraId = currentUser?.prefeitura_id || 'default_municipality';
+  // Usar 'santa-quiteria' como fallback/padrão para criação, mas priorizar o ID do usuário logado
+  const prefeituraId = currentUser?.prefeitura_id || 'santa-quiteria'; 
 
   // Módulos disponíveis no sistema
   const modules: ModulePermission[] = [
@@ -154,7 +155,7 @@ export function useUserManagement() {
           password: userData.password,
           role: userData.role,
           is_active: true,
-          prefeitura_id: prefeituraId, // INSERINDO prefeitura_id
+          prefeitura_id: 'santa-quiteria', // FORÇANDO O ID AQUI
         }])
         .select()
         .single();
@@ -171,7 +172,7 @@ export function useUserManagement() {
         can_edit: perm.can_edit,
         can_create: perm.can_create,
         can_delete: perm.can_delete,
-        prefeitura_id: prefeituraId, // INSERINDO prefeitura_id
+        prefeitura_id: 'santa-quiteria', // FORÇANDO O ID AQUI
       }));
 
       await supabase
@@ -186,7 +187,7 @@ export function useUserManagement() {
       toast({ title: "Erro", description: "Falha ao criar usuário", variant: "destructive" });
       return false;
     }
-  }, [fetchUsers, toast, prefeituraId]);
+  }, [fetchUsers, toast]);
 
   // Atualizar usuário
   const updateUser = useCallback(async (userId: string, userData: { username?: string; password?: string; role?: string; is_active?: boolean }) => {
