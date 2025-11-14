@@ -15,6 +15,7 @@ import {
   Building2
 } from "lucide-react";
 import { Contract, ManagingUnit } from "@/types/contract";
+import { useAuth } from "@/contexts/AuthContext"; // Importando useAuth
 
 interface DashboardProps {
   onFilteredView: (filters: { status?: string; modality?: string; unit?: string }) => void;
@@ -35,6 +36,7 @@ const modalityLabels = {
 const COLORS = ['#2563EB', '#16A34A', '#F97316', '#7C3AED', '#0891B2', '#DC2626'];
 
 export function Dashboard({ onFilteredView, contracts, managingUnits, onContractSelect }: DashboardProps) {
+  const { user } = useAuth(); // Usando useAuth
   const [selectedUnit, setSelectedUnit] = useState<string>('all');
 
   // Filtrar contratos por secretaria selecionada
@@ -107,6 +109,16 @@ export function Dashboard({ onFilteredView, contracts, managingUnits, onContract
 
   return (
     <div className="space-y-6">
+      {/* Saudação Personalizada */}
+      <div className="bg-white p-6 rounded-xl shadow-md border-l-4 border-blue-600">
+        <h1 className="text-3xl font-extrabold text-gray-900 mb-1">
+          Olá, {user?.username || 'Usuário'}!
+        </h1>
+        <p className="text-gray-600 text-lg">
+          Bem-vindo(a) ao painel de gestão de contratos.
+        </p>
+      </div>
+
       {/* Header responsivo */}
       <div className="flex flex-col space-y-4">
         <div>
