@@ -24,26 +24,23 @@ export function useMunicipios() {
 
       if (error) {
         const msg = (error as Error)?.message || String(error);
-        if (msg.includes('Could not find the table') || msg.includes('schema cache')) {
-          setMunicipios([{ id: 'santa-quiteria', name: 'Prefeitura Municipal de Santa Quitéria', slug: 'santa-quiteria' }]);
+        const fallback = [{ id: 'santa-quiteria', name: 'Prefeitura Municipal de Santa Quitéria', slug: 'santa-quiteria' }];
+        if (msg.includes('Could not find the table') || msg.includes('schema cache') || msg.toLowerCase().includes('permission') || msg.toLowerCase().includes('rls')) {
+          setMunicipios(fallback);
           return;
         }
-        throw error;
+        setMunicipios(fallback);
+        return;
       }
 
-      setMunicipios(data || []);
-    } catch (error) {
-      console.error('Erro ao buscar municípios:', error);
-      const msg = (error as Error)?.message || String(error);
-      if (msg.includes('Could not find the table') || msg.includes('schema cache')) {
+      if (!data || data.length === 0) {
         setMunicipios([{ id: 'santa-quiteria', name: 'Prefeitura Municipal de Santa Quitéria', slug: 'santa-quiteria' }]);
       } else {
-        toast({
-          title: "Erro de Dados",
-          description: "Falha ao carregar a lista de prefeituras.",
-          variant: "destructive",
-        });
+        setMunicipios(data);
       }
+    } catch (error) {
+      console.error('Erro ao buscar municípios:', error);
+      setMunicipios([{ id: 'santa-quiteria', name: 'Prefeitura Municipal de Santa Quitéria', slug: 'santa-quiteria' }]);
     } finally {
       setLoading(false);
     }

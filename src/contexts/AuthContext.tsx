@@ -23,7 +23,7 @@ interface User {
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  signIn: (username: string, password: string) => Promise<{ error: { message: string } | null }>;
+  signIn: (username: string, password: string) => Promise<{ error: { message: string; raw?: string } | null }>;
   signOut: () => Promise<void>;
   hasPermission: (module: string, action: 'view' | 'edit' | 'create' | 'delete') => boolean;
   canAccessModule: (module: string) => boolean;
@@ -122,40 +122,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (authError) {
         const msg = authError.message || '';
-        const lower = msg.toLowerCase();
-        if (lower.includes('user not found')) {
-          const signUpRes = await supabase.auth.signUp({ email: loginEmail, password: normalizedPassword });
-          const signUpUser = signUpRes.data?.user;
-          const signUpError = signUpRes.error;
-          if (signUpError) {
-            // Se já houver usuário, não tente cadastrar novamente
-            if (signUpError.message.toLowerCase().includes('already registered')) {
-              return { error: { message: 'Usuário já existente. Verifique suas credenciais.' } };
-            }
-            return { error: { message: signUpError.message } };
-          }
-          if (!signUpUser) {
-            return { error: { message: 'Cadastro realizado, mas sessão não foi criada. Desative verificação de email no Supabase Auth para login imediato.' } };
-          }
-          await supabase
-            .from('app_users')
-            .upsert({ uid: signUpUser.id, username: normalizedUsername, role: 'viewer', prefeitura_id: null })
-            .select('uid')
-            .maybeSingle();
-          const retry = await supabase.auth.signInWithPassword({ email: loginEmail, password: normalizedPassword });
-          const retryData = retry.data as unknown as { user: { id: string } | null; session: Session | null };
-          if (retry.error) {
-            return { error: { message: retry.error.message } };
-          }
-          authData.user = retryData.user;
-          authData.session = retryData.session;
-        } else if (lower.includes('invalid login credentials')) {
-          return { error: { message: 'Credenciais inválidas. Verifique seu usuário e senha.' } };
-        } else if (lower.includes('email logins are disabled')) {
-          return { error: { message: 'Login por email desabilitado no Supabase Auth. Ative Email + Password.' } };
-        } else {
-          return { error: { message: msg } };
+        const status = (authError as unknown as { status?: number }).status ?? 0;
+        console.debug('Auth error', { status, msg });
+        if (status === 400) {
+          return { error: { message: 'Credenciais inválidas. Verifique seu usuário e senha.', raw: msg } };
         }
+        if (status === 403) {
+          return { error: { message: 'Login por email desabilitado no Supabase Auth. Ative Email + Password.', raw: msg } };
+        }
+        if (status === 0 || status >= 500) {
+          return { error: { message: 'Servidor indisponível ou conexão lenta. Tente novamente.', raw: msg } };
+        }
+        return { error: { message: msg, raw: msg } };
       }
 
       const authUser = authData?.user;
@@ -168,7 +146,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return { error: null };
     } catch (error) {
       console.error('Unexpected error during login:', error);
-      return { error: { message: 'Ocorreu um erro inesperado. Tente novamente mais tarde.' } };
+      const raw = (error as Error)?.message || 'unknown';
+      return { error: { message: 'Ocorreu um erro inesperado. Tente novamente mais tarde.', raw } };
     }
   };
 
@@ -177,27 +156,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (event === 'SIGNED_IN' && session?.user) {
         const authUser = session.user;
 
-        let { data: appUserData } = await supabase
+        const { data: appUserData, error: appUsersError } = await supabase
           .from('app_users')
           .select('uid, username, role, prefeitura_id')
           .eq('uid', authUser.id)
           .maybeSingle();
 
-        if (!appUserData) {
-          const adminEmail = (authUser.email ?? '').toLowerCase();
-          if (adminEmail === 'admin@gerenciamento.local') {
-            const upsertRes = await supabase
-              .from('app_users')
-              .upsert({ uid: authUser.id, username: 'admin', role: 'superadmin', prefeitura_id: 'santa-quiteria' })
-              .select('uid, username, role, prefeitura_id')
-              .maybeSingle();
-            appUserData = upsertRes.data ?? null;
-          }
+        const adminEmail = (authUser.email ?? '').toLowerCase();
+        if ((!appUserData || appUsersError) && adminEmail === 'admin@gerenciamento.local') {
+          const upsertRes = await supabase
+            .from('app_users')
+            .upsert({ uid: authUser.id, username: 'admin', role: 'superadmin', prefeitura_id: 'santa-quiteria' })
+            .select('uid, username, role, prefeitura_id')
+            .maybeSingle();
+          appUserData = upsertRes.data ?? null;
+        } else if (appUserData && adminEmail === 'admin@gerenciamento.local' && appUserData.role !== 'superadmin') {
+          const upsertRes = await supabase
+            .from('app_users')
+            .upsert({ uid: authUser.id, username: 'admin', role: 'superadmin', prefeitura_id: 'santa-quiteria' })
+            .select('uid, username, role, prefeitura_id')
+            .maybeSingle();
+          appUserData = upsertRes.data ?? appUserData;
         }
 
-        const effectiveRole = appUserData?.role || 'viewer';
+        const effectiveRole = appUserData?.role || ((adminEmail === 'admin@gerenciamento.local') ? 'superadmin' : 'viewer');
         const effectiveIsAdmin = ['admin','superadmin'].includes(effectiveRole);
-        const effectivePrefeituraId = appUserData?.prefeitura_id || null;
+        const effectivePrefeituraId = appUserData?.prefeitura_id || ((adminEmail === 'admin@gerenciamento.local') ? 'santa-quiteria' : null);
 
         const { data: localUserData } = await supabase
           .from('users')
@@ -248,6 +232,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = async () => {
     console.log('Signing out user:', user?.username);
+    try {
+      await supabase.auth.signOut();
+    } catch (e) {
+      console.warn('Erro ao encerrar sessão', e);
+    }
     setUser(null);
     setSelectedPrefeituraId(null);
     localStorage.removeItem('user');

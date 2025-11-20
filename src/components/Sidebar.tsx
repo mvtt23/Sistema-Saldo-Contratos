@@ -35,6 +35,9 @@ export function Sidebar({ activePage, onPageChange }: SidebarProps) {
 
   const handleSignOut = async () => {
     await signOut();
+    try {
+      window.location.assign('/');
+    } catch { /* noop */ }
   };
 
   // Filtrar itens do menu com base no perfil do usuário

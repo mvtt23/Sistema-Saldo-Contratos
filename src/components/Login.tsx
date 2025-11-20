@@ -9,27 +9,23 @@ import { AlertCircle, Loader2 } from 'lucide-react';
 export function Login() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [error, setError] = useState<{ message: string; raw?: string } | null>(null);
   const [loading, setLoading] = useState(false);
   const { signIn } = useAuth();
   
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
+    setError(null);
     setLoading(true);
-    const timeoutId = setTimeout(() => {
-      setError('Servidor indisponível ou conexão lenta. Tente novamente.');
-      setLoading(false);
-    }, 12000);
 
     try {
       const normalizedUsername = username.trim().toLowerCase();
       const normalizedPassword = password.trim();
-      const { error } = await signIn(normalizedUsername, normalizedPassword);
+      const { error: signErr } = await signIn(normalizedUsername, normalizedPassword);
 
-      if (error) {
-        setError(error.message || 'Credenciais inválidas. Verifique seu usuário e senha.');
+      if (signErr) {
+        setError({ message: signErr.message || 'Credenciais inválidas. Verifique seu usuário e senha.', raw: signErr.raw });
       } else {
         const path = window.location.pathname;
         if (!path.startsWith('/admin')) {
@@ -37,9 +33,8 @@ export function Login() {
         }
       }
     } catch {
-      setError('Ocorreu um erro inesperado. Tente novamente.');
+      setError({ message: 'Ocorreu um erro inesperado. Tente novamente.' });
     } finally {
-      clearTimeout(timeoutId);
       setLoading(false);
     }
   };
@@ -101,9 +96,14 @@ export function Login() {
               </div>
 
               {error && (
-                <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-red-800 text-sm">
-                  <AlertCircle className="w-4 h-4 flex-shrink-0" />
-                  <span>{error}</span>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-red-800 text-sm">
+                    <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                    <span>{error.message}</span>
+                  </div>
+                  {error.raw && (
+                    <div className="text-xs text-slate-600">Detalhe técnico: {error.raw}</div>
+                  )}
                 </div>
               )}
 
