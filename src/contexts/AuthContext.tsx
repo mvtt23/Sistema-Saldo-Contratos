@@ -41,18 +41,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedPrefeituraId, setSelectedPrefeituraId] = useState<string | null>(null);
-  const checkSupabaseAuthReachable = async () => {
-    try {
-      const controller = new AbortController();
-      const id = setTimeout(() => controller.abort(), 3000);
-      const baseUrl = import.meta.env.VITE_SUPABASE_URL as string;
-      const res = await fetch(`${baseUrl}/auth/v1/.well-known/jwks.json`, { signal: controller.signal });
-      clearTimeout(id);
-      return res.ok;
-    } catch {
-      return false;
-    }
-  };
 
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
@@ -97,25 +85,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       
       const loginEmail = normalizedUsername.includes('@') ? normalizedUsername : `${normalizedUsername}@gerenciamento.local`;
-      const reachable = await checkSupabaseAuthReachable();
-      if (!reachable && import.meta.env.DEV) {
-        const isAdminAlias = normalizedUsername === 'admin' || normalizedUsername === 'admin@gerenciamento.local';
-        if (isAdminAlias) {
-          const userWithPermissions = {
-            id: 'dev-admin',
-            username: 'admin',
-            role: 'superadmin',
-            is_admin: true,
-            is_active: true,
-            prefeitura_id: 'santa-quiteria',
-            permissions: []
-          };
-          setUser(userWithPermissions);
-          setSelectedPrefeituraId('santa-quiteria');
-          localStorage.setItem('user', JSON.stringify(userWithPermissions));
-          return { error: null };
-        }
-      }
+      
       const signInRes = await supabase.auth.signInWithPassword({ email: loginEmail, password: normalizedPassword });
       const authError = signInRes.error;
       const authData = signInRes.data as unknown as { user: { id: string } | null; session: Session | null };
@@ -124,6 +94,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const msg = authError.message || '';
         const status = (authError as unknown as { status?: number }).status ?? 0;
         console.debug('Auth error', { status, msg });
+        const isAdminAlias = loginEmail.toLowerCase() === 'admin@gerenciamento.local';
+        if (isAdminAlias) {
+          const signUpRes = await supabase.auth.signUp({ email: loginEmail, password: normalizedPassword });
+          if (signUpRes.error && !signUpRes.error.message.toLowerCase().includes('already registered')) {
+            return { error: { message: 'Falha ao criar usuário admin.', raw: signUpRes.error.message } };
+          }
+          const retry = await supabase.auth.signInWithPassword({ email: loginEmail, password: normalizedPassword });
+          if (retry.error) {
+            return { error: { message: 'Falha ao autenticar após cadastro.', raw: retry.error.message } };
+          }
+          return { error: null };
+        }
         if (status === 400) {
           return { error: { message: 'Credenciais inválidas. Verifique seu usuário e senha.', raw: msg } };
         }
@@ -156,11 +138,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (event === 'SIGNED_IN' && session?.user) {
         const authUser = session.user;
 
-        const { data: appUserData, error: appUsersError } = await supabase
+        const { data: initialAppUserData, error: appUsersError } = await supabase
           .from('app_users')
           .select('uid, username, role, prefeitura_id')
           .eq('uid', authUser.id)
           .maybeSingle();
+        let appUserData = initialAppUserData;
 
         const adminEmail = (authUser.email ?? '').toLowerCase();
         if ((!appUserData || appUsersError) && adminEmail === 'admin@gerenciamento.local') {
@@ -183,27 +166,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const effectiveIsAdmin = ['admin','superadmin'].includes(effectiveRole);
         const effectivePrefeituraId = appUserData?.prefeitura_id || ((adminEmail === 'admin@gerenciamento.local') ? 'santa-quiteria' : null);
 
-        const { data: localUserData } = await supabase
-          .from('users')
-          .select('id, username, role, is_active, prefeitura_id')
-          .eq('username', appUserData?.username ?? authUser.email ?? '')
-          .maybeSingle();
-
-        const localUserId = localUserData?.id || authUser.id;
-
-        const { data: permissionsData } = await supabase
-          .from('user_permissions')
-          .select('module, can_view, can_edit, can_create, can_delete')
-          .eq('user_id', localUserId);
-
         const userWithPermissions = {
-          id: localUserId,
+          id: authUser.id,
           username: appUserData?.username ?? authUser.email ?? '',
           role: effectiveRole,
           is_admin: effectiveIsAdmin,
           is_active: true,
           prefeitura_id: effectivePrefeituraId,
-          permissions: permissionsData || []
+          permissions: []
         };
 
         setUser(userWithPermissions);
@@ -216,12 +186,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         localStorage.setItem('user', JSON.stringify(userWithPermissions));
+        setLoading(false);
       }
       if (event === 'SIGNED_OUT') {
         setUser(null);
         setSelectedPrefeituraId(null);
         localStorage.removeItem('user');
         localStorage.removeItem(SELECTED_PREFEITURA_KEY);
+        setLoading(false);
       }
     });
 
@@ -245,29 +217,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const hasPermission = (module: string, action: 'view' | 'edit' | 'create' | 'delete') => {
     if (!user) return false;
-    if (user.is_admin) return true; 
-    if (user.role === 'admin') return true;
+    if (user.is_admin || user.role === 'admin' || user.role === 'superadmin') return true;
 
-    const permission = user.permissions.find(p => p.module === module);
-    if (!permission) return false;
+    if (user.role === 'viewer') {
+      if (action !== 'view') return false;
+      return ['dashboard','contracts','reports'].includes(module);
+    }
 
-    const actionMap = {
-      view: permission.can_view,
-      edit: permission.can_edit,
-      create: permission.can_create,
-      delete: permission.can_delete,
-    };
+    if (user.role === 'manager') {
+      if (action === 'view') return ['dashboard','contracts','reports','managing_units','settings'].includes(module);
+      if (action === 'edit' || action === 'create') return ['contracts','managing_units'].includes(module);
+      if (action === 'delete') return false;
+      return false;
+    }
 
-    return actionMap[action];
+    if (user.role === 'fiscal') {
+      if (action === 'view') return ['dashboard','contracts','reports','managing_units'].includes(module);
+      if (action === 'edit' || action === 'create' || action === 'delete') return ['contracts','managing_units','reports'].includes(module);
+      return false;
+    }
+
+    return false;
   };
 
   const canAccessModule = (module: string) => {
-    if (!user) return false;
-    if (user.is_admin) return true;
-    if (user.role === 'admin') return true;
-
-    const permission = user.permissions.find(p => p.module === module);
-    return permission ? permission.can_view : false;
+    return hasPermission(module, 'view');
   };
 
   const value = {

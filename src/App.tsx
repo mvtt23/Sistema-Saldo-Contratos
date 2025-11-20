@@ -15,7 +15,6 @@ import { MunicipalityManagement } from "@/components/MunicipalityManagement"; //
 import { Contract } from "@/types/contract";
 import { useSupabaseData } from '@/hooks/useSupabaseData';
 import { useContractManagement } from '@/hooks/useContractManagement';
-import { useMunicipalityManagement } from '@/hooks/useMunicipalityManagement';
 import { useMunicipios } from '@/hooks/useMunicipios';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -41,8 +40,7 @@ function App() {
     saveInvoice,
     deleteInvoice
   } = useContractManagement(refetch);
-  const { cleanMunicipalities } = useMunicipalityManagement(() => {});
-  const { municipios } = useMunicipios();
+  const { municipios, loading: municipiosLoading } = useMunicipios();
   const path = typeof window !== 'undefined' ? window.location.pathname : '/';
   const isAdminRoute = path.startsWith('/admin');
   const slug = !isAdminRoute && path !== '/' ? path.slice(1) : null;
@@ -54,7 +52,6 @@ function App() {
     modality?: string;
     unit?: string;
   }>({});
-  const [didCleanMunicipios, setDidCleanMunicipios] = useState(false);
   const [backendDown, setBackendDown] = useState(false);
   const checkBackend = async () => {
     try {
@@ -114,9 +111,7 @@ function App() {
     setActivePage('contracts');
   };
 
-  if (user?.is_admin && !didCleanMunicipios) {
-    cleanMunicipalities().finally(() => setDidCleanMunicipios(true));
-  }
+  
 
   const renderContent = () => {
     switch (activePage) {
@@ -179,32 +174,35 @@ function App() {
               <h1 className="text-3xl font-extrabold text-gray-900">Gerenciador de saldo de contratos</h1>
               <p className="text-gray-600 mt-2">Selecione o órgão público</p>
             </div>
-
-            <div className="space-y-3">
-              {municipios.map(m => {
-                const logo = (typeof window !== 'undefined') ? localStorage.getItem(`ORG_LOGO_${m.id}`) || '' : '';
-                return (
-                  <div key={m.id} className="flex justify-between items-center p-4 border rounded-lg">
-                    <div className="flex items-center gap-3">
-                      {logo ? (
-                        <img src={logo} alt={m.name} className="w-10 h-10 object-cover rounded" />
-                      ) : (
-                        <div className="w-10 h-10 rounded bg-gray-200 flex items-center justify-center">
-                          <Building2 className="w-6 h-6 text-gray-500" />
-                        </div>
-                      )}
-                      <p className="font-semibold text-gray-900">{m.name}</p>
+            {municipiosLoading ? (
+              <div className="flex items-center justify-center py-8 text-slate-600">Carregando órgãos públicos...</div>
+            ) : (
+              <div className="space-y-3">
+                {(municipios.length ? municipios : [{ id: 'santa-quiteria', name: 'Prefeitura Municipal de Santa Quitéria', slug: 'santa-quiteria' }]).map(m => {
+                  const logo = (typeof window !== 'undefined') ? localStorage.getItem(`ORG_LOGO_${m.id}`) || '' : '';
+                  return (
+                    <div key={m.id} className="flex justify-between items-center p-4 border rounded-lg">
+                      <div className="flex items-center gap-3">
+                        {logo ? (
+                          <img src={logo} alt={m.name} className="w-10 h-10 object-cover rounded" />
+                        ) : (
+                          <div className="w-10 h-10 rounded bg-gray-200 flex items-center justify-center">
+                            <Building2 className="w-6 h-6 text-gray-500" />
+                          </div>
+                        )}
+                        <p className="font-semibold text-gray-900">{m.name}</p>
+                      </div>
+                      <Button onClick={() => {
+                        setPrefeituraSelecionada(m.id);
+                        window.location.assign(`/${m.slug}`);
+                      }} className="bg-blue-600 hover:bg-blue-700">
+                        Entrar
+                      </Button>
                     </div>
-                    <Button onClick={() => {
-                      setPrefeituraSelecionada(m.id);
-                      window.location.assign(`/${m.slug}`);
-                    }} className="bg-blue-600 hover:bg-blue-700">
-                      Entrar
-                    </Button>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            )}
 
           </CardContent>
         </Card>
@@ -214,7 +212,7 @@ function App() {
   }
 
 
-  if (authLoading || dataLoading) {
+  if ((authLoading && !user) || (dataLoading && !!user)) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">

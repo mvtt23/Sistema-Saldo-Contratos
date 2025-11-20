@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
-import { useToast } from '@/hooks/use-toast';
 
 export interface Municipio {
   id: string;
@@ -11,7 +10,6 @@ export interface Municipio {
 export function useMunicipios() {
   const [municipios, setMunicipios] = useState<Municipio[]>([]);
   const [loading, setLoading] = useState(true);
-  const { toast } = useToast();
 
   const fetchMunicipios = useCallback(async () => {
     setLoading(true);
@@ -44,7 +42,7 @@ export function useMunicipios() {
     } finally {
       setLoading(false);
     }
-  }, [toast]);
+  }, []);
 
   useEffect(() => {
     fetchMunicipios();
