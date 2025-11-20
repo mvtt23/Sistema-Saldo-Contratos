@@ -180,7 +180,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         if (userWithPermissions.is_admin) {
           const storedPrefeitura = localStorage.getItem(SELECTED_PREFEITURA_KEY);
-          setSelectedPrefeituraId(storedPrefeitura || null);
+          const effectiveSelected = storedPrefeitura || userWithPermissions.prefeitura_id || null;
+          setSelectedPrefeituraId(effectiveSelected);
         } else {
           setSelectedPrefeituraId(userWithPermissions.prefeitura_id);
         }

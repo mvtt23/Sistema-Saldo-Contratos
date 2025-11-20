@@ -227,11 +227,10 @@ export function useSupabaseData(): SupabaseData {
   }, [toast, user, selectedPrefeituraId]);
 
   useEffect(() => {
-    // Refetch sempre que o usuário ou a prefeitura selecionada mudar
-    if (user?.prefeitura_id || user?.is_admin) {
+    const shouldFetch = Boolean(user?.prefeitura_id) || Boolean(user?.is_admin && selectedPrefeituraId);
+    if (shouldFetch) {
       fetchData();
     } else {
-      // Sem usuário autenticado: não buscamos dados e garantimos que loading esteja falso
       setLoading(false);
     }
   }, [fetchData, user?.prefeitura_id, user?.is_admin, selectedPrefeituraId]);
