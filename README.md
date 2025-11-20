@@ -1,4 +1,4 @@
-# Sistema de Gestão de Contratos da Prefeitura
+# Gerenciamento de Contratos
 
 Este é um sistema web para gestão de contratos da prefeitura, construído com React, TypeScript e Supabase.
 

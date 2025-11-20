@@ -4,11 +4,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { formatCurrency } from "@/lib/utils";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { 
-  DollarSign, 
-  FileText, 
   AlertTriangle, 
   CheckCircle,
-  TrendingUp,
   Clock,
   XCircle,
   Filter,
@@ -46,12 +43,10 @@ export function Dashboard({ onFilteredView, contracts, managingUnits, onContract
 
   const totalContracts = filteredContracts.length;
   const activeContracts = filteredContracts.filter(c => c.status === 'active').length;
-  const expiredContracts = filteredContracts.filter(c => c.status === 'expired').length;
-  const completedContracts = filteredContracts.filter(c => c.status === 'completed').length;
+  
   const rescindedContracts = filteredContracts.filter(c => c.status === 'suspended').length;
   
-  const totalUsed = filteredContracts.reduce((sum, contract) => sum + contract.usedValue, 0);
-  const totalValue = filteredContracts.reduce((sum, contract) => sum + contract.currentValue, 0);
+  
   
   // Contratos próximos ao vencimento (30 dias)
   const contractsNearExpiry = filteredContracts.filter(contract => {
@@ -82,8 +77,8 @@ export function Dashboard({ onFilteredView, contracts, managingUnits, onContract
     modality: modality
   }));
 
-  const handlePieClick = (data: any) => {
-    const filters: any = { status: 'active', modality: data.modality };
+  const handlePieClick = (data: { modality: string }) => {
+    const filters: { status?: string; modality?: string; unit?: string } = { status: 'active', modality: data.modality };
     if (selectedUnit !== 'all') {
       filters.unit = selectedUnit;
     }
@@ -99,7 +94,7 @@ export function Dashboard({ onFilteredView, contracts, managingUnits, onContract
 
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
-  const handleMouseEnter = (data: any, index: number) => {
+  const handleMouseEnter = (_: unknown, index: number) => {
     setHoveredIndex(index);
   };
 
@@ -151,7 +146,7 @@ export function Dashboard({ onFilteredView, contracts, managingUnits, onContract
         <Card 
           className="border-l-4 border-l-green-500 cursor-pointer hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 bg-gradient-to-br from-green-50 to-white" 
           onClick={() => {
-            const filters: any = { status: 'active' };
+            const filters: { status?: string; modality?: string; unit?: string } = { status: 'active' };
             if (selectedUnit !== 'all') filters.unit = selectedUnit;
             onFilteredView(filters);
           }}
@@ -170,17 +165,17 @@ export function Dashboard({ onFilteredView, contracts, managingUnits, onContract
               de {totalContracts} contratos totais
             </p>
             <div className="space-y-1">
-              {Object.entries(activeContractsByModality).slice(0, 2).map(([modality, count]) => (
-                <div 
-                  key={modality}
-                  className="flex justify-between text-xs font-medium text-gray-700 hover:text-green-600 hover:bg-green-50 cursor-pointer px-2 py-1 rounded transition-colors"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    const filters: any = { status: 'active', modality };
-                    if (selectedUnit !== 'all') filters.unit = selectedUnit;
-                    onFilteredView(filters);
-                  }}
-                >
+                {Object.entries(activeContractsByModality).slice(0, 2).map(([modality, count]) => (
+                  <div 
+                    key={modality}
+                    className="flex justify-between text-xs font-medium text-gray-700 hover:text-green-600 hover:bg-green-50 cursor-pointer px-2 py-1 rounded transition-colors"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                    const filters: { status?: string; modality?: string; unit?: string } = { status: 'active', modality };
+                      if (selectedUnit !== 'all') filters.unit = selectedUnit;
+                      onFilteredView(filters);
+                    }}
+                  >
                   <span className="font-semibold">{modalityLabels[modality as keyof typeof modalityLabels]}</span>
                   <span className="font-bold text-green-600">{count}</span>
                 </div>
@@ -192,7 +187,7 @@ export function Dashboard({ onFilteredView, contracts, managingUnits, onContract
         <Card 
           className="border-l-4 border-l-orange-500 cursor-pointer hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 bg-gradient-to-br from-orange-50 to-white"
           onClick={() => {
-            const filters: any = { status: 'active' };
+            const filters: { status?: string; modality?: string; unit?: string } = { status: 'active' };
             if (selectedUnit !== 'all') filters.unit = selectedUnit;
             onFilteredView(filters);
           }}
@@ -212,7 +207,7 @@ export function Dashboard({ onFilteredView, contracts, managingUnits, onContract
             </p>
             {contractsNearExpiry.length > 0 && (
               <div className="space-y-1 max-h-32 overflow-y-auto">
-                {contractsNearExpiry.slice(0, 3).map((contract, index) => {
+                {contractsNearExpiry.slice(0, 3).map((contract) => {
                   const daysRemaining = Math.ceil((contract.endDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
                   return (
                     <div 
@@ -241,7 +236,7 @@ export function Dashboard({ onFilteredView, contracts, managingUnits, onContract
         <Card 
           className="border-l-4 border-l-red-500 cursor-pointer hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 bg-gradient-to-br from-red-50 to-white"
           onClick={() => {
-            const filters: any = { status: 'active' };
+            const filters: { status?: string; modality?: string; unit?: string } = { status: 'active' };
             if (selectedUnit !== 'all') filters.unit = selectedUnit;
             onFilteredView(filters);
           }}
@@ -290,7 +285,7 @@ export function Dashboard({ onFilteredView, contracts, managingUnits, onContract
         <Card 
           className="border-l-4 border-l-gray-500 cursor-pointer hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 bg-gradient-to-br from-gray-50 to-white"
           onClick={() => {
-            const filters: any = { status: 'suspended' };
+            const filters: { status?: string; modality?: string; unit?: string } = { status: 'suspended' };
             if (selectedUnit !== 'all') filters.unit = selectedUnit;
             onFilteredView(filters);
           }}

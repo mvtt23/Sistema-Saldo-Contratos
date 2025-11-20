@@ -12,24 +12,39 @@ export function Login() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { signIn } = useAuth();
+  
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
+    const timeoutId = setTimeout(() => {
+      setError('Servidor indisponível ou conexão lenta. Tente novamente.');
+      setLoading(false);
+    }, 12000);
 
     try {
-      const { error } = await signIn(username, password);
+      const normalizedUsername = username.trim().toLowerCase();
+      const normalizedPassword = password.trim();
+      const { error } = await signIn(normalizedUsername, normalizedPassword);
 
       if (error) {
         setError(error.message || 'Credenciais inválidas. Verifique seu usuário e senha.');
+      } else {
+        const path = window.location.pathname;
+        if (!path.startsWith('/admin')) {
+          window.location.assign('/admin');
+        }
       }
-    } catch (err) {
+    } catch {
       setError('Ocorreu um erro inesperado. Tente novamente.');
     } finally {
+      clearTimeout(timeoutId);
       setLoading(false);
     }
   };
+
+  
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4">
@@ -42,7 +57,7 @@ export function Login() {
               className="w-[200px] h-auto object-contain"
             />
           </div>
-          <h1 className="text-3xl font-bold text-slate-900 mb-2">Sistema de Contratos</h1>
+          <h1 className="text-3xl font-bold text-slate-900 mb-2">Gerenciamento de Contratos</h1>
           <p className="text-slate-600">Gerencie seus contratos de forma eficiente</p>
         </div>
 
@@ -106,12 +121,14 @@ export function Login() {
                   'Entrar'
                 )}
               </Button>
+
+              
             </form>
           </CardContent>
         </Card>
 
         <p className="text-center text-sm text-slate-600 mt-6">
-          Sistema de Gestão de Contratos © 2025
+          Gerenciamento de Contratos © 2025
         </p>
       </div>
     </div>

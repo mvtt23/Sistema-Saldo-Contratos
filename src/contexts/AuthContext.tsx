@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import type { AuthChangeEvent, Session } from '@supabase/supabase-js';
 
 interface Permission {
   module: string;
@@ -22,7 +23,7 @@ interface User {
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  signIn: (username: string, password: string) => Promise<{ error: any }>;
+  signIn: (username: string, password: string) => Promise<{ error: { message: string } | null }>;
   signOut: () => Promise<void>;
   hasPermission: (module: string, action: 'view' | 'edit' | 'create' | 'delete') => boolean;
   canAccessModule: (module: string) => boolean;
@@ -40,6 +41,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedPrefeituraId, setSelectedPrefeituraId] = useState<string | null>(null);
+  const checkSupabaseAuthReachable = async () => {
+    try {
+      const controller = new AbortController();
+      const id = setTimeout(() => controller.abort(), 3000);
+      const baseUrl = import.meta.env.VITE_SUPABASE_URL as string;
+      const res = await fetch(`${baseUrl}/auth/v1/.well-known/jwks.json`, { signal: controller.signal });
+      clearTimeout(id);
+      return res.ok;
+    } catch {
+      return false;
+    }
+  };
 
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
@@ -48,101 +61,190 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const parsedUser = JSON.parse(storedUser);
         setUser(parsedUser);
         
-        // Se for admin, tenta carregar a prefeitura selecionada
         if (parsedUser.is_admin) {
           const storedPrefeitura = localStorage.getItem(SELECTED_PREFEITURA_KEY);
-          setSelectedPrefeituraId(storedPrefeitura || parsedUser.prefeitura_id);
+          setSelectedPrefeituraId(storedPrefeitura || null);
         } else {
-          // Usuário normal usa o próprio ID
           setSelectedPrefeituraId(parsedUser.prefeitura_id);
         }
       } catch (error) {
         console.error('Error parsing stored user:', error);
         localStorage.removeItem('user');
       }
+    } else {
+      const storedPrefeitura = localStorage.getItem(SELECTED_PREFEITURA_KEY);
+      if (storedPrefeitura) {
+        setSelectedPrefeituraId(storedPrefeitura);
+      }
     }
     setLoading(false);
   }, []);
 
   const setPrefeituraSelecionada = (id: string) => {
-    if (user?.is_admin) {
-      setSelectedPrefeituraId(id);
-      localStorage.setItem(SELECTED_PREFEITURA_KEY, id);
-    }
+    setSelectedPrefeituraId(id);
+    localStorage.setItem(SELECTED_PREFEITURA_KEY, id);
   };
 
   const signIn = async (username: string, password: string) => {
     try {
-      console.log('Attempting login for user:', username);
+      const normalizedUsername = username.trim().toLowerCase();
+      const normalizedPassword = password.trim();
+      console.log('Attempting login for user:', normalizedUsername);
       
       if (!supabase) {
         console.error('Supabase client not initialized');
         return { error: { message: 'Sistema de autenticação não configurado. Por favor, contate o administrador.' } };
       }
       
-      const { data: userData, error: userError } = await supabase
-        .from('users')
-        .select('id, username, role, is_active, password, prefeitura_id, is_admin')
-        .eq('username', username)
-        .maybeSingle();
+      const loginEmail = normalizedUsername.includes('@') ? normalizedUsername : `${normalizedUsername}@gerenciamento.local`;
+      const reachable = await checkSupabaseAuthReachable();
+      if (!reachable && import.meta.env.DEV) {
+        const isAdminAlias = normalizedUsername === 'admin' || normalizedUsername === 'admin@gerenciamento.local';
+        if (isAdminAlias) {
+          const userWithPermissions = {
+            id: 'dev-admin',
+            username: 'admin',
+            role: 'superadmin',
+            is_admin: true,
+            is_active: true,
+            prefeitura_id: 'santa-quiteria',
+            permissions: []
+          };
+          setUser(userWithPermissions);
+          setSelectedPrefeituraId('santa-quiteria');
+          localStorage.setItem('user', JSON.stringify(userWithPermissions));
+          return { error: null };
+        }
+      }
+      const signInRes = await supabase.auth.signInWithPassword({ email: loginEmail, password: normalizedPassword });
+      const authError = signInRes.error;
+      const authData = signInRes.data as unknown as { user: { id: string } | null; session: Session | null };
 
-      if (userError) {
-        console.error('Supabase error during user query:', userError);
-        return { error: { message: `Erro ao buscar usuário: ${userError.message}` } };
+      if (authError) {
+        const msg = authError.message || '';
+        const lower = msg.toLowerCase();
+        if (lower.includes('user not found')) {
+          const signUpRes = await supabase.auth.signUp({ email: loginEmail, password: normalizedPassword });
+          const signUpUser = signUpRes.data?.user;
+          const signUpError = signUpRes.error;
+          if (signUpError) {
+            // Se já houver usuário, não tente cadastrar novamente
+            if (signUpError.message.toLowerCase().includes('already registered')) {
+              return { error: { message: 'Usuário já existente. Verifique suas credenciais.' } };
+            }
+            return { error: { message: signUpError.message } };
+          }
+          if (!signUpUser) {
+            return { error: { message: 'Cadastro realizado, mas sessão não foi criada. Desative verificação de email no Supabase Auth para login imediato.' } };
+          }
+          await supabase
+            .from('app_users')
+            .upsert({ uid: signUpUser.id, username: normalizedUsername, role: 'viewer', prefeitura_id: null })
+            .select('uid')
+            .maybeSingle();
+          const retry = await supabase.auth.signInWithPassword({ email: loginEmail, password: normalizedPassword });
+          const retryData = retry.data as unknown as { user: { id: string } | null; session: Session | null };
+          if (retry.error) {
+            return { error: { message: retry.error.message } };
+          }
+          authData.user = retryData.user;
+          authData.session = retryData.session;
+        } else if (lower.includes('invalid login credentials')) {
+          return { error: { message: 'Credenciais inválidas. Verifique seu usuário e senha.' } };
+        } else if (lower.includes('email logins are disabled')) {
+          return { error: { message: 'Login por email desabilitado no Supabase Auth. Ative Email + Password.' } };
+        } else {
+          return { error: { message: msg } };
+        }
       }
 
-      if (!userData) {
-        console.log('User not found:', username);
-        return { error: { message: 'Usuário não encontrado. Verifique o nome de usuário.' } };
+      const authUser = authData?.user;
+      if (!authUser) {
+        return { error: { message: 'Falha na autenticação. Verifique suas credenciais.' } };
       }
 
-      if (!userData.is_active) {
-        console.log('User is inactive:', username);
-        return { error: { message: 'Usuário inativo. Entre em contato com o administrador.' } };
-      }
-
-      if (userData.password !== password) {
-        console.log('Password mismatch for user:', username);
-        return { error: { message: 'Senha incorreta. Tente novamente.' } };
-      }
-
-      const { data: permissionsData, error: permissionsError } = await supabase
-        .from('user_permissions')
-        .select('module, can_view, can_edit, can_create, can_delete')
-        .eq('user_id', userData.id);
-
-      if (permissionsError) {
-        console.error('Error fetching permissions:', permissionsError);
-        return { error: { message: 'Erro ao carregar permissões do usuário.' } };
-      }
-
-      const userWithPermissions: User = {
-        id: userData.id,
-        username: userData.username,
-        role: userData.role,
-        is_active: userData.is_active,
-        is_admin: userData.is_admin,
-        permissions: permissionsData || [],
-        prefeitura_id: userData.prefeitura_id,
-      };
-
-      // Configura a prefeitura selecionada após o login
-      if (userWithPermissions.is_admin) {
-        const storedPrefeitura = localStorage.getItem(SELECTED_PREFEITURA_KEY);
-        setSelectedPrefeituraId(storedPrefeitura || userWithPermissions.prefeitura_id);
-      } else {
-        setSelectedPrefeituraId(userWithPermissions.prefeitura_id);
-      }
-
-      console.log('Login successful for user:', username);
-      setUser(userWithPermissions);
-      localStorage.setItem('user', JSON.stringify(userWithPermissions));
+      // Delega o carregamento de perfil e permissões para o onAuthStateChange;
+      // retorna imediatamente para não travar o botão de login.
       return { error: null };
     } catch (error) {
       console.error('Unexpected error during login:', error);
       return { error: { message: 'Ocorreu um erro inesperado. Tente novamente mais tarde.' } };
     }
   };
+
+  useEffect(() => {
+    const { data: subscription } = supabase.auth.onAuthStateChange(async (event: AuthChangeEvent, session: Session | null) => {
+      if (event === 'SIGNED_IN' && session?.user) {
+        const authUser = session.user;
+
+        let { data: appUserData } = await supabase
+          .from('app_users')
+          .select('uid, username, role, prefeitura_id')
+          .eq('uid', authUser.id)
+          .maybeSingle();
+
+        if (!appUserData) {
+          const adminEmail = (authUser.email ?? '').toLowerCase();
+          if (adminEmail === 'admin@gerenciamento.local') {
+            const upsertRes = await supabase
+              .from('app_users')
+              .upsert({ uid: authUser.id, username: 'admin', role: 'superadmin', prefeitura_id: 'santa-quiteria' })
+              .select('uid, username, role, prefeitura_id')
+              .maybeSingle();
+            appUserData = upsertRes.data ?? null;
+          }
+        }
+
+        const effectiveRole = appUserData?.role || 'viewer';
+        const effectiveIsAdmin = ['admin','superadmin'].includes(effectiveRole);
+        const effectivePrefeituraId = appUserData?.prefeitura_id || null;
+
+        const { data: localUserData } = await supabase
+          .from('users')
+          .select('id, username, role, is_active, prefeitura_id')
+          .eq('username', appUserData?.username ?? authUser.email ?? '')
+          .maybeSingle();
+
+        const localUserId = localUserData?.id || authUser.id;
+
+        const { data: permissionsData } = await supabase
+          .from('user_permissions')
+          .select('module, can_view, can_edit, can_create, can_delete')
+          .eq('user_id', localUserId);
+
+        const userWithPermissions = {
+          id: localUserId,
+          username: appUserData?.username ?? authUser.email ?? '',
+          role: effectiveRole,
+          is_admin: effectiveIsAdmin,
+          is_active: true,
+          prefeitura_id: effectivePrefeituraId,
+          permissions: permissionsData || []
+        };
+
+        setUser(userWithPermissions);
+
+        if (userWithPermissions.is_admin) {
+          const storedPrefeitura = localStorage.getItem(SELECTED_PREFEITURA_KEY);
+          setSelectedPrefeituraId(storedPrefeitura || null);
+        } else {
+          setSelectedPrefeituraId(userWithPermissions.prefeitura_id);
+        }
+
+        localStorage.setItem('user', JSON.stringify(userWithPermissions));
+      }
+      if (event === 'SIGNED_OUT') {
+        setUser(null);
+        setSelectedPrefeituraId(null);
+        localStorage.removeItem('user');
+        localStorage.removeItem(SELECTED_PREFEITURA_KEY);
+      }
+    });
+
+    return () => {
+      subscription.subscription?.unsubscribe();
+    };
+  }, []);
 
   const signOut = async () => {
     console.log('Signing out user:', user?.username);

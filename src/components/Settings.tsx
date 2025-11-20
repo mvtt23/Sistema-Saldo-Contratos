@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,9 +14,10 @@ interface SettingsProps {
 }
 
 export function Settings({ managingUnits }: SettingsProps) {
-  const [municipalityName, setMunicipalityName] = useState('Prefeitura Municipal de São Paulo');
-  const [slogan, setSlogan] = useState('Cidade que não para');
-  const [address, setAddress] = useState('Viaduto do Chá, 15 - Centro - São Paulo/SP - CEP: 01002-020');
+  const { selectedPrefeituraId } = useAuth();
+  const [municipalityName, setMunicipalityName] = useState('Prefeitura Municipal de Santa Quitéria');
+  const [slogan, setSlogan] = useState('Unidos por uma cidade melhor');
+  const [address, setAddress] = useState('Praça central, s/n - Santa Quitéria/CE');
   const [logoUrl, setLogoUrl] = useState('');
 
   const handleSaveSettings = () => {
@@ -25,11 +27,19 @@ export function Settings({ managingUnits }: SettingsProps) {
       address,
       logoUrl
     });
+    try {
+      if (selectedPrefeituraId) {
+        localStorage.setItem(`ORG_LOGO_${selectedPrefeituraId}`, logoUrl || '');
+        localStorage.setItem(`ORG_NAME_${selectedPrefeituraId}`, municipalityName || '');
+        localStorage.setItem(`ORG_SLOGAN_${selectedPrefeituraId}`, slogan || '');
+        localStorage.setItem(`ORG_ADDRESS_${selectedPrefeituraId}`, address || '');
+      }
+    } catch { /* noop */ }
     alert('Configurações salvas com sucesso!');
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-units-count={managingUnits.length}>
       <div>
         <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">Configurações</h2>
         <p className="text-gray-600">Configure o sistema e gerencie usuários</p>

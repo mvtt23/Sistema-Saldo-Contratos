@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Company, Contract, ManagingUnit } from "@/types/contract";
-import { Building2, User, FileText, Save, Search, Plus, X, Edit2, Trash2, CheckCircle } from "lucide-react";
+import { User, FileText, Save, Search, Plus, X, Edit2, Trash2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext"; // Importando useAuth
 
 interface ContractFormProps {
@@ -276,7 +276,7 @@ export function ContractForm({ onContractSave, managingUnits, companies, saveCom
     // Criar o novo contrato
     const contractData: Omit<Contract, 'id' | 'additives' | 'invoices'> = {
       number: formData.contractNumber,
-      modality: formData.modality as any,
+      modality: formData.modality as Contract['modality'],
       isCarona: formData.modality === 'registro-preco' ? formData.isCarona : false,
       object: formData.object,
       contractor: selectedCompany.name,

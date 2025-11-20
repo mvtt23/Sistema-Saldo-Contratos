@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Contract, Additive, Invoice, ManagingUnit } from "@/types/contract";
+import { Contract, Additive, Invoice } from "@/types/contract";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
@@ -118,11 +118,17 @@ export function ContractDetails({
   const StatusIcon = status.icon;
   const usagePercentage = (currentContract.usedValue / currentContract.currentValue) * 100;
 
-  const handleAdditiveInputChange = (field: string, value: any) => {
+  const handleAdditiveInputChange = (
+    field: keyof typeof initialAdditiveForm,
+    value: string | number
+  ) => {
     setAdditiveForm(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleInvoiceInputChange = (field: string, value: any) => {
+  const handleInvoiceInputChange = (
+    field: keyof typeof invoiceForm,
+    value: string | number
+  ) => {
     setInvoiceForm(prev => ({ ...prev, [field]: value }));
   };
 
@@ -347,7 +353,6 @@ export function ContractDetails({
   // Encontrar o programa do contrato (Ainda depende de uma busca, mas vamos simplificar por enquanto)
   // NOTE: Em um sistema real, o App.tsx passaria a lista de ManagingUnits para ContractDetails
   // para que ele pudesse fazer essa busca. Como não temos a lista aqui, vamos ignorar a busca do programa.
-  const contractUnit = null; // Não temos managingUnits aqui
   const contractProgram = null;
 
   return (
@@ -660,20 +665,45 @@ export function ContractDetails({
                       </h4>
                       <p className="text-sm text-gray-500">Data: {formatDate(additive.date)}</p>
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <Badge variant="outline" className="capitalize">
-                        {additive.type === 'value' ? 'Valor' : additive.type === 'term' ? 'Prazo' : 'Valor e Prazo'}
-                      </Badge>
-                      {currentContract.status === 'active' && canEdit && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleEditAdditive(additive)}
-                        >
-                          <Edit className="w-4 h-4" />
-                        </Button>
-                      )}
-                    </div>
+              <div className="flex items-center space-x-2">
+                <Badge variant="outline" className="capitalize">
+                  {additive.type === 'value' ? 'Valor' : additive.type === 'term' ? 'Prazo' : 'Valor e Prazo'}
+                </Badge>
+                {currentContract.status === 'active' && canEdit && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleEditAdditive(additive)}
+                  >
+                    <Edit className="w-4 h-4" />
+                  </Button>
+                )}
+                {currentContract.status === 'active' && canDelete && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={async () => {
+                      if (confirm('Tem certeza que deseja excluir este aditivo?')) {
+                        const success = await deleteAdditive(additive.id);
+                        if (success) {
+                          const updatedAdditives = currentContract.additives.filter(a => a.id !== additive.id);
+                          const updatedContract: Contract = {
+                            ...currentContract,
+                            currentValue: currentContract.currentValue - additive.valueChange,
+                            remainingBalance: currentContract.remainingBalance - additive.valueChange,
+                            additives: updatedAdditives,
+                          };
+                          onContractUpdate(updatedContract);
+                          toast({ title: 'Sucesso', description: 'Aditivo excluído com sucesso.', variant: 'success' });
+                        }
+                      }
+                    }}
+                    className="text-red-600 hover:text-red-700"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                )}
+              </div>
                   </div>
                   
                   <div className="grid grid-cols-1 gap-2">

@@ -12,7 +12,7 @@ export function MunicipalitySelector() {
     return null; // Só renderiza para Super Admins
   }
 
-  const currentMunicipio = municipios.find(m => m.id === selectedPrefeituraId);
+  
 
   return (
     <Card className="mb-6 border-blue-300 bg-blue-50 shadow-md">

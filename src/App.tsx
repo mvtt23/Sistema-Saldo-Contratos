@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Login } from '@/components/Login';
 import { Toaster } from "@/components/Toaster";
@@ -15,12 +15,17 @@ import { MunicipalityManagement } from "@/components/MunicipalityManagement"; //
 import { Contract } from "@/types/contract";
 import { useSupabaseData } from '@/hooks/useSupabaseData';
 import { useContractManagement } from '@/hooks/useContractManagement';
+import { useMunicipalityManagement } from '@/hooks/useMunicipalityManagement';
+import { useMunicipios } from '@/hooks/useMunicipios';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Building2 } from 'lucide-react';
 
 export type PageType = 'overview' | 'contracts' | 'contract-form' | 'managing-units' | 'reports' | 'settings' | 'contract-details' | 'municipality-management';
 
 function App() {
   console.log("App component started rendering."); // Adicionado para depuração
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, setPrefeituraSelecionada } = useAuth();
   const { contracts, managingUnits, companies, loading: dataLoading, refetch } = useSupabaseData();
   const { 
     saveContract, 
@@ -36,6 +41,11 @@ function App() {
     saveInvoice,
     deleteInvoice
   } = useContractManagement(refetch);
+  const { cleanMunicipalities } = useMunicipalityManagement(() => {});
+  const { municipios } = useMunicipios();
+  const path = typeof window !== 'undefined' ? window.location.pathname : '/';
+  const isAdminRoute = path.startsWith('/admin');
+  const slug = !isAdminRoute && path !== '/' ? path.slice(1) : null;
   
   const [selectedContract, setSelectedContract] = useState<Contract | null>(null);
   const [activePage, setActivePage] = useState<PageType>("overview");
@@ -44,6 +54,27 @@ function App() {
     modality?: string;
     unit?: string;
   }>({});
+  const [didCleanMunicipios, setDidCleanMunicipios] = useState(false);
+  const [backendDown, setBackendDown] = useState(false);
+  const checkBackend = async () => {
+    try {
+      const baseUrl = import.meta.env.VITE_SUPABASE_URL as string;
+      const res = await fetch(`${baseUrl}/auth/v1/.well-known/jwks.json`, { method: 'GET' });
+      setBackendDown(!res.ok);
+    } catch {
+      setBackendDown(true);
+    }
+  };
+
+  useEffect(() => {
+    checkBackend();
+  }, []);
+
+  useEffect(() => {
+    if (slug) {
+      setPrefeituraSelecionada(slug);
+    }
+  }, [slug, setPrefeituraSelecionada]);
 
   const handleContractSave = async (contractData: Omit<Contract, 'id' | 'additives' | 'invoices'>) => {
     const newContract = await saveContract(contractData);
@@ -82,6 +113,10 @@ function App() {
     setContractFilters(filters);
     setActivePage('contracts');
   };
+
+  if (user?.is_admin && !didCleanMunicipios) {
+    cleanMunicipalities().finally(() => setDidCleanMunicipios(true));
+  }
 
   const renderContent = () => {
     switch (activePage) {
@@ -133,6 +168,52 @@ function App() {
     }
   };
 
+  // Seleção de município na raiz (sem exigir login)
+  if (path === '/') {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <Card className="max-w-2xl w-full">
+          <CardContent className="p-8">
+            <div className="flex flex-col items-center text-center mb-8">
+              <Building2 className="w-14 h-14 text-blue-700 mb-3" />
+              <h1 className="text-3xl font-extrabold text-gray-900">Gerenciador de saldo de contratos</h1>
+              <p className="text-gray-600 mt-2">Selecione o órgão público</p>
+            </div>
+
+            <div className="space-y-3">
+              {municipios.map(m => {
+                const logo = (typeof window !== 'undefined') ? localStorage.getItem(`ORG_LOGO_${m.id}`) || '' : '';
+                return (
+                  <div key={m.id} className="flex justify-between items-center p-4 border rounded-lg">
+                    <div className="flex items-center gap-3">
+                      {logo ? (
+                        <img src={logo} alt={m.name} className="w-10 h-10 object-cover rounded" />
+                      ) : (
+                        <div className="w-10 h-10 rounded bg-gray-200 flex items-center justify-center">
+                          <Building2 className="w-6 h-6 text-gray-500" />
+                        </div>
+                      )}
+                      <p className="font-semibold text-gray-900">{m.name}</p>
+                    </div>
+                    <Button onClick={() => {
+                      setPrefeituraSelecionada(m.id);
+                      window.location.assign(`/${m.slug}`);
+                    }} className="bg-blue-600 hover:bg-blue-700">
+                      Entrar
+                    </Button>
+                  </div>
+                );
+              })}
+            </div>
+
+          </CardContent>
+        </Card>
+        <Toaster />
+      </div>
+    );
+  }
+
+
   if (authLoading || dataLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -154,7 +235,16 @@ function App() {
       
       <main className="flex-1 ml-0 md:ml-64">
         <div className="p-4 md:p-8">
-          {user.is_admin && <MunicipalitySelector />}
+          {backendDown && (
+            <div className="mb-4 p-4 rounded-lg border bg-red-50 border-red-200 text-red-800">
+              <div className="font-semibold">Serviço indisponível</div>
+              <div className="text-sm">Não foi possível conectar ao servidor. Algumas funções podem ficar indisponíveis. Você pode navegar com dados em cache.</div>
+              <div className="mt-2">
+                <Button onClick={checkBackend} className="bg-red-600 hover:bg-red-700">Tentar novamente</Button>
+              </div>
+            </div>
+          )}
+          {user?.is_admin && <MunicipalitySelector />}
           {renderContent()}
         </div>
       </main>

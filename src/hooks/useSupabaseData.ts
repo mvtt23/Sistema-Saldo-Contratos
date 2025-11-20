@@ -13,25 +13,25 @@ interface SupabaseData {
   refetch: () => void;
 }
 
-// Função auxiliar para converter nomes de campos de snake_case para camelCase (Frontend)
-const toCamelCase = (obj: any) => {
+type AnyObject = Record<string, unknown>;
+
+const toCamelCase = (obj: unknown) => {
   if (!obj || typeof obj !== 'object') return obj;
   if (Array.isArray(obj)) return obj.map(toCamelCase);
 
-  const newObj: any = {};
+  const newObj: AnyObject = {};
   for (const key in obj) {
     if (Object.prototype.hasOwnProperty.call(obj, key)) {
       const camelKey = key.replace(/(_\w)/g, (m) => m[1].toUpperCase());
-      newObj[camelKey] = obj[key];
+      newObj[camelKey] = (obj as AnyObject)[key];
     }
   }
   return newObj;
 };
 
-// Função auxiliar para converter datas de string (do Supabase) para Date objects e aplicar camelCase
-const parseDates = (data: any[]): any[] => {
+const parseDates = (data: AnyObject[]): AnyObject[] => {
   return data.map(item => {
-    const camelCaseItem = toCamelCase(item);
+    const camelCaseItem = toCamelCase(item) as AnyObject;
     
     // Conversão de datas no nível principal
     if (camelCaseItem.startDate) camelCaseItem.startDate = new Date(camelCaseItem.startDate);
@@ -39,8 +39,8 @@ const parseDates = (data: any[]): any[] => {
 
     // Conversão de datas e estrutura para Aditivos
     if (camelCaseItem.additives && Array.isArray(camelCaseItem.additives)) {
-      camelCaseItem.additives = camelCaseItem.additives.map((a: any) => {
-        const camelCaseAdditive = toCamelCase(a);
+      camelCaseItem.additives = (camelCaseItem.additives as unknown[]).map((a) => {
+        const camelCaseAdditive = toCamelCase(a) as AnyObject;
         if (camelCaseAdditive.date) camelCaseAdditive.date = new Date(camelCaseAdditive.date);
         return camelCaseAdditive as Additive;
       });
@@ -48,8 +48,8 @@ const parseDates = (data: any[]): any[] => {
 
     // Conversão de datas e estrutura para Invoices
     if (camelCaseItem.invoices && Array.isArray(camelCaseItem.invoices)) {
-      camelCaseItem.invoices = camelCaseItem.invoices.map((i: any) => {
-        const camelCaseInvoice = toCamelCase(i);
+      camelCaseItem.invoices = (camelCaseItem.invoices as unknown[]).map((i) => {
+        const camelCaseInvoice = toCamelCase(i) as AnyObject;
         if (camelCaseInvoice.date) camelCaseInvoice.date = new Date(camelCaseInvoice.date);
         return camelCaseInvoice as Invoice;
       });
@@ -57,7 +57,7 @@ const parseDates = (data: any[]): any[] => {
     
     // Conversão de estrutura para Programs (dentro de ManagingUnit)
     if (camelCaseItem.programs && Array.isArray(camelCaseItem.programs)) {
-      camelCaseItem.programs = camelCaseItem.programs.map((p: any) => toCamelCase(p) as Program);
+      camelCaseItem.programs = (camelCaseItem.programs as unknown[]).map((p) => toCamelCase(p) as Program);
     }
 
     return camelCaseItem;
@@ -69,7 +69,7 @@ export function useSupabaseData(): SupabaseData {
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [managingUnits, setManagingUnits] = useState<ManagingUnit[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
@@ -106,8 +106,17 @@ export function useSupabaseData(): SupabaseData {
       }
 
       const { data: contractsData, error: contractsError } = await contractsQuery;
-
-      if (contractsError) throw contractsError;
+      if (contractsError) {
+        const msg = contractsError.message || '';
+        if (msg.includes('Could not find the table') || msg.includes('schema cache')) {
+          setContracts([]);
+          setManagingUnits([]);
+          setCompanies([]);
+          setError(null);
+          return;
+        }
+        throw contractsError;
+      }
       
       // 2. Fetch Managing Units (incluindo programas)
       let unitsQuery = supabase
@@ -122,8 +131,17 @@ export function useSupabaseData(): SupabaseData {
       }
 
       const { data: unitsData, error: unitsError } = await unitsQuery;
-
-      if (unitsError) throw unitsError;
+      if (unitsError) {
+        const msg = unitsError.message || '';
+        if (msg.includes('Could not find the table') || msg.includes('schema cache')) {
+          setContracts([]);
+          setManagingUnits([]);
+          setCompanies([]);
+          setError(null);
+          return;
+        }
+        throw unitsError;
+      }
 
       // 3. Fetch Companies
       let companiesQuery = supabase
@@ -135,8 +153,17 @@ export function useSupabaseData(): SupabaseData {
       }
 
       const { data: companiesData, error: companiesError } = await companiesQuery;
-
-      if (companiesError) throw companiesError;
+      if (companiesError) {
+        const msg = companiesError.message || '';
+        if (msg.includes('Could not find the table') || msg.includes('schema cache')) {
+          setContracts([]);
+          setManagingUnits([]);
+          setCompanies([]);
+          setError(null);
+          return;
+        }
+        throw companiesError;
+      }
 
       // Mapear e converter dados
       const parsedContracts = parseDates(contractsData || []) as Contract[];
@@ -147,23 +174,65 @@ export function useSupabaseData(): SupabaseData {
       setManagingUnits(parsedUnits);
       setCompanies(parsedCompanies);
 
+      try {
+        localStorage.setItem('CACHE_CONTRACTS', JSON.stringify(parsedContracts));
+        localStorage.setItem('CACHE_MANAGING_UNITS', JSON.stringify(parsedUnits));
+        localStorage.setItem('CACHE_COMPANIES', JSON.stringify(parsedCompanies));
+        localStorage.setItem('CACHE_TS', String(Date.now()));
+      } catch { void 0; }
+
     } catch (err) {
       console.error("Erro ao buscar dados do Supabase:", err);
-      setError("Falha ao carregar dados do servidor. Verifique a conexão e as permissões.");
-      toast({
-        title: "Erro de Conexão",
-        description: "Não foi possível carregar os dados iniciais do Supabase.",
-        variant: "destructive",
-      });
+      const msg = (err as Error)?.message || String(err);
+      if (msg.includes('Could not find the table') || msg.includes('schema cache')) {
+        setContracts([]);
+        setManagingUnits([]);
+        setCompanies([]);
+        setError(null);
+      } else {
+        try {
+          const cachedContracts = JSON.parse(localStorage.getItem('CACHE_CONTRACTS') || '[]');
+          const cachedUnits = JSON.parse(localStorage.getItem('CACHE_MANAGING_UNITS') || '[]');
+          const cachedCompanies = JSON.parse(localStorage.getItem('CACHE_COMPANIES') || '[]');
+          if (Array.isArray(cachedContracts) || Array.isArray(cachedUnits) || Array.isArray(cachedCompanies)) {
+            setContracts(cachedContracts as Contract[]);
+            setManagingUnits(cachedUnits as ManagingUnit[]);
+            setCompanies(cachedCompanies as Company[]);
+            setError("Servidor indisponível. Exibindo dados em modo offline.");
+            toast({
+              title: "Modo Offline",
+              description: "Servidor indisponível. Exibindo dados em cache.",
+              variant: "destructive",
+            });
+          } else {
+            setError("Falha ao carregar dados do servidor. Verifique a conexão e as permissões.");
+            toast({
+              title: "Erro de Conexão",
+              description: "Não foi possível carregar os dados iniciais do Supabase.",
+              variant: "destructive",
+            });
+          }
+        } catch {
+          setError("Falha ao carregar dados do servidor. Verifique a conexão e as permissões.");
+          toast({
+            title: "Erro de Conexão",
+            description: "Não foi possível carregar os dados iniciais do Supabase.",
+            variant: "destructive",
+          });
+        }
+      }
     } finally {
       setLoading(false);
     }
-  }, [toast, user?.is_admin, user?.prefeitura_id, selectedPrefeituraId]);
+  }, [toast, user, selectedPrefeituraId]);
 
   useEffect(() => {
     // Refetch sempre que o usuário ou a prefeitura selecionada mudar
     if (user?.prefeitura_id || user?.is_admin) {
       fetchData();
+    } else {
+      // Sem usuário autenticado: não buscamos dados e garantimos que loading esteja falso
+      setLoading(false);
     }
   }, [fetchData, user?.prefeitura_id, user?.is_admin, selectedPrefeituraId]);
 

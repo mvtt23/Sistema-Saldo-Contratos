@@ -75,3 +75,43 @@ BEGIN
     );
   END IF;
 END $$;
+
+-- ====================================================================
+-- Municipios: criação, saneamento e função administrativa de exclusão
+-- ====================================================================
+
+-- Criar tabela municipios se não existir
+CREATE TABLE IF NOT EXISTS municipios (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  slug TEXT NOT NULL UNIQUE
+);
+
+-- Garantir Santa Quitéria e remover demais
+INSERT INTO municipios (id, name, slug)
+VALUES ('santa-quiteria', 'Prefeitura Municipal de Santa Quitéria', 'santa-quiteria')
+ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, slug = EXCLUDED.slug;
+
+DELETE FROM municipios WHERE id <> 'santa-quiteria';
+
+-- Função administrativa para excluir prefeitura, contornando RLS
+CREATE OR REPLACE FUNCTION admin_delete_municipality(mid TEXT)
+RETURNS VOID AS $$
+BEGIN
+  INSERT INTO public.municipios (id, name, slug)
+  VALUES ('santa-quiteria', 'Prefeitura Municipal de Santa Quitéria', 'sq-contratos')
+  ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, slug = EXCLUDED.slug;
+
+  UPDATE public.fiscals SET prefeitura_id = 'santa-quiteria' WHERE prefeitura_id = mid;
+  UPDATE public.managing_units SET prefeitura_id = 'santa-quiteria' WHERE prefeitura_id = mid;
+  UPDATE public.contracts SET prefeitura_id = 'santa-quiteria' WHERE prefeitura_id = mid;
+  UPDATE public.companies SET prefeitura_id = 'santa-quiteria' WHERE prefeitura_id = mid;
+  UPDATE public.user_permissions SET prefeitura_id = 'santa-quiteria' WHERE prefeitura_id = mid;
+  UPDATE public.users SET prefeitura_id = 'santa-quiteria' WHERE prefeitura_id = mid;
+
+  DELETE FROM public.municipios WHERE id = mid;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Permitir execução da função para perfil público/anon
+GRANT EXECUTE ON FUNCTION admin_delete_municipality(TEXT) TO anon, authenticated;

@@ -7,7 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useUserManagement } from "@/hooks/useUserManagement";
 import { useToast } from "@/hooks/use-toast";
-import { Users, Plus, Edit, Trash2, Shield, Eye, Pencil, FileText, X, Check } from "lucide-react";
+import { Users, Plus, Edit, Trash2, Shield, Eye, Pencil, X, Check } from "lucide-react";
 
 interface User {
   id: string;
@@ -20,7 +20,6 @@ interface User {
 interface ModulePermission {
   module: string;
   label: string;
-  icon: any;
   can_view: boolean;
   can_edit: boolean;
   can_create: boolean;

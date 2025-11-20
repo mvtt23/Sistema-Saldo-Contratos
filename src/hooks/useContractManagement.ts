@@ -35,10 +35,11 @@ interface UseContractManagement {
   getAllFiscals: () => Promise<Fiscal[]>;
 }
 
-// Função auxiliar para converter nomes de campos de camelCase para snake_case (Supabase)
-const toSnakeCase = (obj: any) => {
+type AnyObject = Record<string, unknown>;
+
+const toSnakeCase = (obj: AnyObject) => {
   if (!obj) return obj;
-  const newObj: any = {};
+  const newObj: AnyObject = {};
   for (const key in obj) {
     if (Object.prototype.hasOwnProperty.call(obj, key)) {
       const snakeKey = key.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
@@ -48,14 +49,13 @@ const toSnakeCase = (obj: any) => {
   return newObj;
 };
 
-// Função auxiliar para converter nomes de campos de snake_case para camelCase (Frontend)
-const toCamelCase = (obj: any) => {
-  if (!obj) return obj;
-  const newObj: any = {};
+const toCamelCase = (obj: unknown) => {
+  if (!obj || typeof obj !== 'object') return obj;
+  const newObj: AnyObject = {};
   for (const key in obj) {
     if (Object.prototype.hasOwnProperty.call(obj, key)) {
       const camelKey = key.replace(/(_\w)/g, (m) => m[1].toUpperCase());
-      newObj[camelKey] = obj[key];
+      newObj[camelKey] = (obj as AnyObject)[key];
     }
   }
   return newObj;

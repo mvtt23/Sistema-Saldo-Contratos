@@ -39,7 +39,6 @@ export function ManagingUnits({ initialUnits, refetchData, saveUnit, deleteUnit,
   const [editingUnit, setEditingUnit] = useState<ManagingUnit | null>(null);
   const [isProgramFormOpen, setIsProgramFormOpen] = useState(false);
   const [editingProgram, setEditingProgram] = useState<Program | null>(null);
-  const [selectedUnitForProgram, setSelectedUnitForProgram] = useState<string>('');
   const [selectedFiscal, setSelectedFiscal] = useState<Fiscal | null>(null);
   const [fiscalSearchTerm, setFiscalSearchTerm] = useState('');
   const [showFiscalForm, setShowFiscalForm] = useState(false);
@@ -344,7 +343,6 @@ export function ManagingUnits({ initialUnits, refetchData, saveUnit, deleteUnit,
   };
 
   const handleAddProgram = (unitId: string) => {
-    setSelectedUnitForProgram(unitId);
     setProgramFormData({ name: '', unitId, prefeituraId: user?.prefeitura_id || '' });
     setEditingProgram(null);
     setIsProgramFormOpen(true);
@@ -379,7 +377,6 @@ export function ManagingUnits({ initialUnits, refetchData, saveUnit, deleteUnit,
     setProgramFormData({ name: '', unitId: '', prefeituraId: user?.prefeitura_id || '' });
     setIsProgramFormOpen(false);
     setEditingProgram(null);
-    setSelectedUnitForProgram('');
   };
 
   return (

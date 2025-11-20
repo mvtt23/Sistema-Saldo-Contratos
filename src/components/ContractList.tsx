@@ -3,12 +3,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Contract } from "@/types/contract";
-import { formatCurrency, formatDate, calculateDaysRemaining } from "@/lib/utils";
 import { ContractCard } from "./ContractCard";
-import { Search, Filter, Calendar, Building2, ChevronDown, ChevronUp } from "lucide-react";
+import { Search, Filter, Calendar, ChevronDown, ChevronUp } from "lucide-react";
 
 interface ContractListProps {
   contracts: Contract[];
@@ -28,12 +26,7 @@ const modalityLabels = {
   'registro-preco': 'Registro de Preço'
 };
 
-const statusLabels = {
-  'active': 'Ativo',
-  'expired': 'Vencido',
-  'suspended': 'Suspenso',
-  'completed': 'Concluído'
-};
+//
 
 export function ContractList({ contracts, onContractSelect, initialFilters = {} }: ContractListProps) {
   const [statusFilter, setStatusFilter] = useState(initialFilters.status || 'all');

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,7 +11,7 @@ import { Building2, Plus, Edit, Trash2, X, Loader2, AlertTriangle } from "lucide
 export function MunicipalityManagement() {
   const { user } = useAuth();
   const { municipios, loading, fetchMunicipios } = useMunicipios();
-  const { createMunicipality, updateMunicipality, deleteMunicipality } = useMunicipalityManagement(fetchMunicipios);
+  const { createMunicipality, updateMunicipality, deleteMunicipality, cleanMunicipalities } = useMunicipalityManagement(fetchMunicipios);
   
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingMunicipio, setEditingMunicipio] = useState<Municipio | null>(null);
@@ -28,7 +28,7 @@ export function MunicipalityManagement() {
       <Card className="border-red-500 bg-red-50">
         <CardContent className="p-6 flex items-center space-x-3">
           <AlertTriangle className="w-6 h-6 text-red-600" />
-          <p className="text-red-800 font-medium">Acesso negado. Apenas Super Administradores podem gerenciar prefeituras.</p>
+          <p className="text-red-800 font-medium">Acesso negado. Apenas Super Administradores podem gerenciar órgãos públicos.</p>
         </CardContent>
       </Card>
     );
@@ -89,16 +89,25 @@ export function MunicipalityManagement() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <div>
-          <h2 className="text-xl md:text-2xl lg:text-3xl font-bold text-gray-900 mb-2">Gerenciamento de Prefeituras</h2>
-          <p className="text-gray-600">Crie, edite e exclua as prefeituras que o sistema irá gerenciar.</p>
+          <h2 className="text-xl md:text-2xl lg:text-3xl font-bold text-gray-900 mb-2">Gerenciamento de Órgãos Públicos</h2>
+          <p className="text-gray-600">Crie, edite e exclua os órgãos públicos que o sistema irá gerenciar.</p>
         </div>
-        <Button 
-          onClick={handleNew}
-          className="bg-blue-600 hover:bg-blue-700 w-full sm:w-auto"
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          Nova Prefeitura
-        </Button>
+        <div className="flex gap-2 w-full sm:w-auto">
+          <Button 
+            onClick={handleNew}
+            className="bg-blue-600 hover:bg-blue-700 w-full sm:w-auto"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Novo Órgão Público
+          </Button>
+          <Button 
+            onClick={() => cleanMunicipalities()}
+            variant="outline"
+            className="w-full sm:w-auto"
+          >
+            Manter apenas Santa Quitéria
+          </Button>
+        </div>
       </div>
 
       {/* Formulário de Criação/Edição */}
@@ -107,14 +116,14 @@ export function MunicipalityManagement() {
           <CardHeader>
             <CardTitle className="flex items-center text-lg md:text-xl">
               <Building2 className="w-5 h-5 mr-2 text-blue-600" />
-              {editingMunicipio ? 'Editar Prefeitura' : 'Nova Prefeitura'}
+              {editingMunicipio ? 'Editar Órgão Público' : 'Novo Órgão Público'}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="id">ID da Prefeitura *</Label>
+                  <Label htmlFor="id">ID do Órgão Público *</Label>
                   <Input
                     id="id"
                     value={formData.id}
@@ -164,7 +173,7 @@ export function MunicipalityManagement() {
                   ) : (
                     <Edit className="w-4 h-4 mr-2" />
                   )}
-                  {editingMunicipio ? 'Atualizar' : 'Criar'} Prefeitura
+                  {editingMunicipio ? 'Atualizar' : 'Criar'} Órgão Público
                 </Button>
               </div>
             </form>
@@ -172,10 +181,10 @@ export function MunicipalityManagement() {
         </Card>
       )}
 
-      {/* Lista de Prefeituras */}
+      {/* Lista de Órgãos Públicos */}
       <Card>
         <CardHeader>
-          <CardTitle>Lista de Prefeituras ({municipios.length})</CardTitle>
+          <CardTitle>Lista de Órgãos Públicos ({municipios.length})</CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -186,7 +195,7 @@ export function MunicipalityManagement() {
           ) : municipios.length === 0 ? (
             <div className="text-center py-8 text-gray-500">
               <Building2 className="w-12 h-12 mx-auto mb-4 text-gray-400" />
-              <p>Nenhuma prefeitura cadastrada.</p>
+              <p>Nenhum órgão público cadastrado.</p>
             </div>
           ) : (
             <div className="space-y-3">

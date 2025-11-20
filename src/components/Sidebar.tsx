@@ -26,11 +26,11 @@ const menuItems = [
   { id: 'managing-units' as PageType, label: 'Unidades Gestoras', icon: Building2, module: 'managing_units' },
   { id: 'reports' as PageType, label: 'Relatórios', icon: FileBarChart, module: 'reports' },
   { id: 'settings' as PageType, label: 'Configurações', icon: SettingsIcon, module: 'settings' },
-  { id: 'municipality-management' as PageType, label: 'Gerenciar Prefeituras', icon: Gavel, module: 'admin_only' },
+  { id: 'municipality-management' as PageType, label: 'Órgãos Públicos', icon: Gavel, module: 'admin_only' },
 ];
 
 export function Sidebar({ activePage, onPageChange }: SidebarProps) {
-  const { signOut, user, canAccessModule } = useAuth();
+  const { signOut, user } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const handleSignOut = async () => {
@@ -90,7 +90,7 @@ export function Sidebar({ activePage, onPageChange }: SidebarProps) {
               <Building2 className="w-8 h-8 text-white mr-3" />
               <div>
                 <h1 className="text-lg font-bold text-white">
-                  Sistema de Contratos
+                  Gerenciamento de Contratos
                 </h1>
                 <p className="text-sm text-blue-200">Prefeitura Municipal</p>
               </div>
@@ -146,7 +146,7 @@ export function Sidebar({ activePage, onPageChange }: SidebarProps) {
                 <Building2 className="w-8 h-8 text-white mr-3" />
                 <div>
                   <h1 className="text-lg font-bold text-white">
-                    Sistema de Contratos
+                    Gerenciamento de Contratos
                   </h1>
                   <p className="text-sm text-blue-200">Prefeitura Municipal</p>
                 </div>
